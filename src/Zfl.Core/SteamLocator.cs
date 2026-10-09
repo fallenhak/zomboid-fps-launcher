@@ -1,9 +1,11 @@
 using System.Text.RegularExpressions; using Microsoft.Win32;
+using System.Runtime.Versioning;
 namespace Zfl.Core;
 public static partial class SteamLocator {
   [GeneratedRegex("\"path\"\\s+\"(?<p>[^\"]+)\"")] private static partial Regex PathRx();
   public static IReadOnlyList<string> LibraryFolders(string vdf) =>
     PathRx().Matches(vdf).Select(m => m.Groups["p"].Value.Replace(@"\\", @"\")).ToList();
+  [SupportedOSPlatform("windows")]
   public static string? FindGame() {
     var steam = Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamPath", null) as string;
     if (steam is null) return null;

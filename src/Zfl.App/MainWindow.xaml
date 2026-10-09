@@ -1,0 +1,142 @@
+<Window x:Class="Zfl.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Zomboid FPS Launcher" Width="680" Height="560"
+        WindowStyle="None" ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
+        Background="{StaticResource Win}" BorderBrush="{StaticResource Line}" BorderThickness="1"
+        Loaded="OnLoaded">
+    <DockPanel>
+        <!-- başlık şeridi -->
+        <Border DockPanel.Dock="Top" Height="28" Background="{StaticResource Title}" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" MouseLeftButtonDown="OnDrag">
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="x" Width="30" Padding="0" BorderThickness="1,0,0,0" Background="Transparent" Click="OnClose" ToolTip="Kapat" />
+                <Button DockPanel.Dock="Right" Content="_" Width="30" Padding="0" BorderThickness="1,0,0,0" Background="Transparent" Click="OnMinimize" ToolTip="Simge durumuna küçült" />
+                <TextBlock Text="Zomboid FPS Launcher" Foreground="{StaticResource Dim}" FontSize="13" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </DockPanel>
+        </Border>
+
+        <!-- alt satır: atıf + durum -->
+        <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="10,6">
+            <DockPanel>
+                <TextBlock x:Name="StatusText" DockPanel.Dock="Right" Foreground="{StaticResource Dim}" FontSize="12" Margin="10,0,0,0" />
+                <TextBlock Text="Project Viewpoint (ellu &amp; norkus) kullanır. Modlar resmi Steam Workshop'tan iner." Foreground="{StaticResource Dim}" FontSize="12" />
+            </DockPanel>
+        </Border>
+
+        <TabControl x:Name="Tabs" Margin="0,8,0,0">
+            <!-- OYNA -->
+            <TabItem Header="Oyna">
+                <Grid>
+                    <!-- ilk kurulum -->
+                    <StackPanel x:Name="SetupPanel" Visibility="Collapsed">
+                        <TextBlock Text="Kurulum" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,8" />
+                        <TextBlock x:Name="SteamGameText" Margin="0,0,0,10" />
+                        <TextBlock Text="Kurulum klasörü" Foreground="{StaticResource Dim}" FontSize="12" />
+                        <DockPanel Margin="0,2,0,4">
+                            <Button DockPanel.Dock="Right" Content="Seç" Margin="6,0,0,0" Click="OnPickFolder" />
+                            <TextBox x:Name="InstallRootBox" TextChanged="OnInstallRootChanged" />
+                        </DockPanel>
+                        <TextBlock x:Name="SpaceText" Foreground="{StaticResource Dim}" FontSize="12" />
+                        <TextBlock x:Name="SetupError" Foreground="{StaticResource Bad}" FontSize="12" Margin="0,4,0,0" />
+                        <Button x:Name="InstallButton" Content="Kur" Width="200" Padding="0,9" FontSize="17" FontWeight="SemiBold" Margin="0,18,0,0" Click="OnInstall" />
+                        <TextBlock Text="Oyunun Steam'deki kopyasına dokunulmaz. Kayıtlar ve ayarlar ana Zomboid'den ayrı tutulur." Foreground="{StaticResource Dim}" FontSize="12" HorizontalAlignment="Center" Margin="0,8,0,0" />
+                    </StackPanel>
+
+                    <!-- hazır -->
+                    <StackPanel x:Name="ReadyPanel" Visibility="Collapsed">
+                        <Border BorderBrush="{StaticResource Line}" BorderThickness="1">
+                            <Grid x:Name="StatusGrid">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="140" />
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                            </Grid>
+                        </Border>
+                        <TextBlock x:Name="WarningText" Foreground="{StaticResource Warn}" Margin="0,10,0,0" Visibility="Collapsed" />
+                        <Button x:Name="PlayButton" Content="Oyna" Width="200" Padding="0,9" FontSize="17" FontWeight="SemiBold" Margin="0,16,0,4" Click="OnPlay" />
+                    </StackPanel>
+
+                    <!-- ilerleme -->
+                    <StackPanel x:Name="ProgressPanel" VerticalAlignment="Bottom" Visibility="Collapsed">
+                        <ProgressBar x:Name="Progress" IsIndeterminate="True" />
+                        <TextBlock x:Name="ProgressText" Foreground="{StaticResource Dim}" FontSize="12" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- MODLAR -->
+            <TabItem Header="Modlar">
+                <DockPanel>
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <Button x:Name="AddButton" DockPanel.Dock="Right" Content="Ekle" Margin="6,0,0,0" Click="OnAddMod" />
+                        <TextBox x:Name="AddBox" ToolTip="Workshop bağlantısını ya da numarasını yapıştır" />
+                    </DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Workshop bağlantısını ya da numarasını yapıştırıp Ekle'ye bas." Foreground="{StaticResource Dim}" FontSize="12" Margin="0,-4,0,8" />
+                    <TextBlock x:Name="ModMessage" DockPanel.Dock="Bottom" Foreground="{StaticResource Warn}" FontSize="12" Margin="0,6,0,0" />
+                    <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" LastChildFill="False">
+                        <TextBlock Text="Temel modlar herkeste aynıdır, kaldırılamaz." Foreground="{StaticResource Dim}" FontSize="12" VerticalAlignment="Center" />
+                        <Button DockPanel.Dock="Right" Content="Seçiliyi kaldır" Click="OnRemoveMod" />
+                    </DockPanel>
+                    <ListBox x:Name="ModList">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Note}" Foreground="{StaticResource Dim}" FontSize="12" Margin="8,0,0,0" />
+                                    <CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding CanToggle}" Margin="0,0,8,0" Click="OnToggleMod" />
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                </DockPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </TabItem>
+
+            <!-- AYARLAR -->
+            <TabItem Header="Ayarlar">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="120" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Bellek" Foreground="{StaticResource Dim}" Margin="0,4" />
+                    <StackPanel Grid.Column="1" Margin="0,4">
+                        <DockPanel>
+                            <TextBlock x:Name="MemoryText" DockPanel.Dock="Right" Width="56" Margin="8,0,0,0" />
+                            <Slider x:Name="MemorySlider" Minimum="4" Maximum="12" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="OnMemoryChanged" />
+                        </DockPanel>
+                        <TextBlock x:Name="MemoryHint" Foreground="{StaticResource Dim}" FontSize="12" />
+                    </StackPanel>
+                    <TextBlock Grid.Row="1" Text="Kurulum" Foreground="{StaticResource Dim}" Margin="0,4" />
+                    <TextBlock Grid.Row="1" Grid.Column="1" x:Name="InstallRootText" Margin="0,4" />
+                    <TextBlock Grid.Row="2" Text="Kayıtlar" Foreground="{StaticResource Dim}" Margin="0,4" />
+                    <TextBlock Grid.Row="2" Grid.Column="1" x:Name="SavesText" Margin="0,4" />
+                    <TextBlock Grid.Row="3" Text="Steam oyunu" Foreground="{StaticResource Dim}" Margin="0,4" />
+                    <TextBlock Grid.Row="3" Grid.Column="1" x:Name="SteamDirText" Margin="0,4" />
+                    <StackPanel Grid.Row="4" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Content="Kurulum klasörünü aç" Click="OnOpenInstall" />
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+
+            <!-- HATA BİLDİR -->
+            <TabItem Header="Hata bildir" x:Name="BugTab">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Margin="0,0,0,10" Text="Viewpoint açıkken bir sorun çıktıysa önce Viewpoint ekibine bildir. Bu bilgileri mesaja yapıştır ve console.txt dosyasını ekle." />
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                        <Button Content="Kopyala" Click="OnCopyReport" Margin="0,0,6,0" />
+                        <Button Content="console.txt klasörünü aç" Click="OnOpenLogs" />
+                    </StackPanel>
+                    <TextBox x:Name="ReportBox" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" FontFamily="Consolas" FontSize="13" />
+                </DockPanel>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

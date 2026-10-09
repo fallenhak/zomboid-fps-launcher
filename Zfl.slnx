@@ -1,5 +1,6 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/Zfl.App/Zfl.App.csproj" />
     <Project Path="src/Zfl.Core/Zfl.Core.csproj" />
   </Folder>
   <Folder Name="/tests/">
