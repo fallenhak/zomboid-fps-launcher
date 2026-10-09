@@ -15,6 +15,7 @@ public sealed class LauncherState {
   public List<long> UserMods { get; set; } = [];
   public List<long> DisabledMods { get; set; } = [];
   public string? LastGameVersion { get; set; }
+  public string? LastBuildId { get; set; }
   static readonly JsonSerializerOptions O = new() { WriteIndented = true };
   public static string DefaultPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ZomboidFpsLauncher", "state.json");
   public static LauncherState Load(string path) {
