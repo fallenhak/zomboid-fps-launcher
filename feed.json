@@ -1,0 +1,8 @@
+{ "gameVersion": "42.21", "launcherVersion": "0.1.0", "launcherUrl": null,
+  "baseMods": [
+    { "workshopId": 3619862853, "name": "ZombieBuddy" },
+    { "workshopId": 3809306528, "name": "Project Viewpoint" },
+    { "workshopId": 3810302175, "name": "6244 3D models for Viewpoint" },
+    { "workshopId": 3814178814, "name": "Complete Roofs" },
+    { "workshopId": 3813172420, "name": "TREE in 3D" },
+    { "workshopId": 3811256204, "name": "Viewpoint QOL" } ] }
