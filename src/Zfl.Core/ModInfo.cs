@@ -1,7 +1,7 @@
 namespace Zfl.Core;
 public sealed record ModInfo(string Id, string Name, string Dir, IReadOnlyList<string> Requires, string? VersionMin, string? VersionMax, bool IsJava) {
   public static ModInfo? Read(string modFolder) {
-    var file = new[] { "42", "common", "" }.Select(s => Path.Combine(modFolder, s, "mod.info")).FirstOrDefault(File.Exists);
+    var file = InfoFiles(modFolder).FirstOrDefault(File.Exists);
     if (file is null) return null;
     var kv = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
     foreach (var line in File.ReadAllLines(file)) {
@@ -16,6 +16,15 @@ public sealed record ModInfo(string Id, string Name, string Dir, IReadOnlyList<s
       : new List<string>();
     return new ModInfo(id, One("name") ?? id, modFolder, req, One("versionMin"), One("versionMax"), One("javaJarFile") is not null);
   }
+  /// mod.info adayları: sürüm klasörleri (42, 42.20.4...) büyükten küçüğe, sonra common, sonra kök.
+  public static IEnumerable<string> InfoFiles(string modFolder) {
+    var versions = Directory.Exists(modFolder)
+      ? Directory.GetDirectories(modFolder).Select(d => Path.GetFileName(d)!)
+          .Select(n => (n, v: VerDir(n))).Where(x => x.v is not null).OrderByDescending(x => x.v).Select(x => x.n)
+      : [];
+    return versions.Append("common").Append("").Select(s => Path.Combine(modFolder, s, "mod.info"));
+  }
+  static Version? VerDir(string n) => Version.TryParse(n.Contains('.') ? n : n + ".0", out var v) ? v : null;
   static Version? V(string? s) => Version.TryParse(s, out var v) ? v : null;
   public static bool SupportsGame(ModInfo m, string gameVersion) {
     var g = V(gameVersion); if (g is null) return true;

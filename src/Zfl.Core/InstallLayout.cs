@@ -8,11 +8,11 @@ public sealed record InstallLayout(string Root) {
   public string ToolsDir => Path.Combine(Root, "araclar");
   public string StateFile => Path.Combine(Root, "launcher", "state.json");
   public static string? Validate(string root) {
-    if (!Path.IsPathFullyQualified(root)) return "Tam bir klasör yolu seç (ör. C:\\Oyunlar\\Zomboid FPS).";
+    if (!Path.IsPathFullyQualified(root)) return Loc.T("path.full");
     var full = Path.GetFullPath(root).TrimEnd('\\');
-    if (Path.GetPathRoot(full)!.TrimEnd('\\') == full) return "Sürücünün kendisine kurulamaz, içinde bir klasör seç.";
+    if (Path.GetPathRoot(full)!.TrimEnd('\\') == full) return Loc.T("path.drive");
     var win = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-    if (!string.IsNullOrEmpty(win) && full.StartsWith(win, StringComparison.OrdinalIgnoreCase)) return "Windows klasörüne kurulamaz.";
+    if (!string.IsNullOrEmpty(win) && full.StartsWith(win, StringComparison.OrdinalIgnoreCase)) return Loc.T("path.windows");
     return null;
   }
 }

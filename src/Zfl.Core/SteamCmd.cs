@@ -32,6 +32,6 @@ public sealed class SteamCmd(string toolsDir, IProcessRunner run, HttpClient htt
       if (output.Contains($"Success. Downloaded item {itemId}")) return ItemDir(itemId);
       if (output.Contains("ERROR")) break;
     }
-    throw new SteamCmdException($"Workshop modu {itemId} indirilemedi. İnternet bağlantını kontrol edip tekrar dene.\n{output.Split('\n').LastOrDefault(l => l.Trim().Length > 0)}");
+    throw new SteamCmdException(Loc.F("err.download", itemId) + $"\n{output.Split('\n').LastOrDefault(l => l.Trim().Length > 0)}");
   }
 }

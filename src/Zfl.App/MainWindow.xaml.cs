@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         ModList.ItemsSource = mods;
+        AddBox.ToolTip = Loc.T("mods.hint");
     }
 
     InstallLayout? Layout => state.InstallRoot is { } r ? new InstallLayout(r) : null;
@@ -47,6 +48,15 @@ public partial class MainWindow : Window
         state = LauncherState.Load(StatePath);
         if (state.MemoryMb == 0) state.MemoryMb = Memory.DefaultMb(TotalRam);
         steamGame = SteamLocator.FindGame();
+
+        foreach (var lang in Loc.Languages)
+        {
+            var prev = Loc.Lang; Loc.Lang = lang;
+            LangBox.Items.Add(new ComboBoxItem { Content = Loc.T("lang.name"), Tag = lang });
+            Loc.Lang = prev;
+        }
+        LangBox.SelectedIndex = Array.IndexOf(Loc.Languages, Loc.Lang);
+
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
@@ -56,7 +66,7 @@ public partial class MainWindow : Window
         catch { feed = Feed.Builtin; feedOnline = false; }
 
         MemorySlider.Value = state.MemoryMb / 1024.0;
-        MemoryHint.Text = $"Bilgisayarda {TotalRam / (1L << 30)} GB var. En az 4 GB.";
+        MemoryHint.Text = Loc.F("set.memHint", TotalRam / (1L << 30));
         RefreshAll();
     }
 
@@ -65,16 +75,14 @@ public partial class MainWindow : Window
     void RefreshAll()
     {
         var l = Layout;
-        SteamDirText.Text = steamGame ?? "bulunamadı";
-        InstallRootText.Text = l?.Root ?? "henüz kurulmadı";
+        SteamDirText.Text = steamGame ?? Loc.T("set.notFound");
+        InstallRootText.Text = l?.Root ?? Loc.T("set.notInstalled");
         SavesText.Text = l?.ZomboidDir ?? "-";
         if (l is null || !File.Exists(Path.Combine(l.GameDir, "ProjectZomboid64.exe")))
         {
             SetupPanel.Visibility = Visibility.Visible;
             ReadyPanel.Visibility = Visibility.Collapsed;
-            SteamGameText.Text = steamGame is null
-                ? "Steam'de Project Zomboid bulunamadı. Oyun yüklü değilse önce Steam'den yükle, sonra launcher'ı yeniden aç."
-                : $"Steam'deki oyun: {steamGame}";
+            SteamGameText.Text = steamGame is null ? Loc.T("setup.noGame") : Loc.F("setup.steamGame", steamGame);
             if (InstallRootBox.Text.Length == 0) InstallRootBox.Text = state.InstallRoot ?? DefaultRoot;
             UpdateSpace();
         }
@@ -85,7 +93,7 @@ public partial class MainWindow : Window
             FillStatus(l);
         }
         FillMods();
-        ReportBox.Text = l is null ? "Önce kurulumu tamamla." : BugReport.Collect(l, OrderedMods(l));
+        ReportBox.Text = l is null ? Loc.T("bug.needSetup") : BugReport.Collect(l, OrderedMods(l));
     }
 
     void FillStatus(InstallLayout l)
@@ -96,14 +104,15 @@ public partial class MainWindow : Window
         var vp = ModVersion(Path.Combine(l.ModsDir, "Viewpoint"));
         var zb = BugReport.ZombieBuddyVersion(l);
         var userCount = state.UserMods.Count(id => !state.DisabledMods.Contains(id));
+        string Have(string? v) => v is null ? Loc.T("st.missing") : Loc.T("st.installed");
         var rows = new (string, string, string, Brush)[]
         {
-            ("", "Sürüm", "Durum", Res("Dim")),
-            ("Oyun", game ?? "-", game is null ? "henüz açılmadı" : game == feed.GameVersion ? "✔ destekleniyor" : $"Viewpoint {feed.GameVersion} için", game is null || game == feed.GameVersion ? Res("Good") : Res("Warn")),
-            ("Viewpoint", vp ?? "-", vp is null ? "kurulu değil" : "✔ kurulu", vp is null ? Res("Bad") : Res("Good")),
-            ("ZombieBuddy", zb ?? "-", zb is null ? "kurulu değil" : "✔ kurulu", zb is null ? Res("Bad") : Res("Good")),
-            ("Senin modların", userCount.ToString(), feedOnline ? "Oyna'da güncellenir" : "güncellemeler kontrol edilemedi", feedOnline ? Res("Dim") : Res("Warn")),
-            ("Bellek", $"{state.MemoryMb / 1024} GB", "", Res("Dim")),
+            ("", Loc.T("st.version"), Loc.T("st.state"), Res("Dim")),
+            (Loc.T("st.game"), game ?? "-", game is null ? Loc.T("st.notRun") : game == feed.GameVersion ? Loc.T("st.ok") : Loc.F("st.for", feed.GameVersion), game is null || game == feed.GameVersion ? Res("Good") : Res("Warn")),
+            ("Viewpoint", vp ?? "-", Have(vp), vp is null ? Res("Bad") : Res("Good")),
+            ("ZombieBuddy", zb ?? "-", Have(zb), zb is null ? Res("Bad") : Res("Good")),
+            (Loc.T("st.yourMods"), userCount.ToString(), feedOnline ? Loc.T("st.updatesOnPlay") : Loc.T("st.offline"), feedOnline ? Res("Dim") : Res("Warn")),
+            (Loc.T("st.memory"), $"{state.MemoryMb / 1024} GB", "", Res("Dim")),
         };
         for (int i = 0; i < rows.Length; i++)
         {
@@ -122,14 +131,14 @@ public partial class MainWindow : Window
         var build = steamGame is null ? null : GameInfo.BuildId(steamGame);
         var changed = build is not null && state.LastBuildId is not null && build != state.LastBuildId;
         WarningText.Visibility = changed ? Visibility.Visible : Visibility.Collapsed;
-        WarningText.Text = "Oyun Steam'de güncellendi. Viewpoint yeni sürümü henüz desteklemiyor olabilir. Yine de oynayabilirsin; sorun çıkarsa Viewpoint'in güncellenmesini bekle.";
+        WarningText.Text = Loc.T("warn.gameUpdated");
     }
 
     void FillMods()
     {
         mods.Clear();
         foreach (var m in feed.BaseMods)
-            mods.Add(new ModRow { WorkshopId = m.WorkshopId, Name = m.Name, IsBase = true, Note = "temel" });
+            mods.Add(new ModRow { WorkshopId = m.WorkshopId, Name = m.Name, IsBase = true, Note = Loc.T("mods.base") });
         foreach (var id in state.UserMods)
             mods.Add(new ModRow { WorkshopId = id, Name = UserModName(id), Enabled = !state.DisabledMods.Contains(id) });
     }
@@ -138,8 +147,12 @@ public partial class MainWindow : Window
     {
         if (Layout is { } l && FolderNames(l, id).FirstOrDefault() is { } folder)
             return ModInfo.Read(Path.Combine(l.ModsDir, folder))?.Name ?? folder;
-        return $"Workshop {id}";
+        return Loc.F("mods.workshop", id);
     }
+
+    /// İlerleme satırında Workshop numarası yerine modun adı.
+    string ModName(long id) =>
+        feed.BaseMods.FirstOrDefault(m => m.WorkshopId == id)?.Name ?? (state.UserMods.Contains(id) ? UserModName(id) : id.ToString());
 
     Brush Res(string key) => (Brush)FindResource(key);
 
@@ -159,14 +172,14 @@ public partial class MainWindow : Window
     {
         var root = InstallRootBox.Text.Trim();
         var err = InstallLayout.Validate(root);
-        SetupError.Text = err ?? (steamGame is null ? "Steam'de oyun bulunamadığı için kurulum yapılamaz." : "");
+        SetupError.Text = err ?? (steamGame is null ? Loc.T("setup.cantNoGame") : "");
         InstallButton.IsEnabled = err is null && steamGame is not null && !busy;
         if (err is not null || steamGame is null) { SpaceText.Text = ""; return; }
         var need = DirSize(steamGame) + (1L << 30);
         var drive = new DriveInfo(Path.GetPathRoot(Path.GetFullPath(root))!);
         var free = drive.IsReady ? drive.AvailableFreeSpace : 0;
-        SpaceText.Text = $"Gereken alan: {Gb(need)}. Boş alan: {Gb(free)}.";
-        if (free < need) { SetupError.Text = "Bu sürücüde yeterli boş alan yok. Başka bir klasör seç ya da yer aç."; InstallButton.IsEnabled = false; }
+        SpaceText.Text = Loc.F("setup.space", Gb(need), Gb(free));
+        if (free < need) { SetupError.Text = Loc.T("setup.noSpace"); InstallButton.IsEnabled = false; }
     }
 
     static long dirSizeCache;
@@ -176,7 +189,7 @@ public partial class MainWindow : Window
 
     void OnPickFolder(object sender, RoutedEventArgs e)
     {
-        var d = new OpenFolderDialog { Title = "Kurulum klasörünü seç" };
+        var d = new OpenFolderDialog { Title = Loc.T("setup.pickTitle") };
         if (d.ShowDialog(this) == true) InstallRootBox.Text = Path.Combine(d.FolderName, "Zomboid FPS");
     }
 
@@ -184,7 +197,7 @@ public partial class MainWindow : Window
     {
         state.InstallRoot = Path.GetFullPath(InstallRootBox.Text.Trim());
         state.Save(StatePath);
-        if (await PrepareAsync()) { Status("Kurulum tamamlandı"); RefreshAll(); }
+        if (await PrepareAsync()) { Status(Loc.T("setup.done")); RefreshAll(); }
     }
 
     async void OnPlay(object sender, RoutedEventArgs e)
@@ -192,6 +205,9 @@ public partial class MainWindow : Window
         if (!await PrepareAsync()) return;
         await StartGameAsync(Layout!);
     }
+
+    Installer NewInstaller(InstallLayout l, SteamCmd steam, IProgress<string> progress) =>
+        new(l, steam, progress, SteamLocator.WorkshopDirs()) { Name = ModName };
 
     /// Oyunu eşitler, modları indirir/kurar, ayarı ve mod listesini yazar.
     async Task<bool> PrepareAsync()
@@ -203,15 +219,15 @@ public partial class MainWindow : Window
         {
             if (steamGame is not null)
             {
-                ShowProgress("Oyun dosyaları karşılaştırılıyor...");
-                var n = await GameMirror.SyncAsync(steamGame, l.GameDir, new Progress<string>(f => ShowProgress($"Kopyalanıyor: {f}")), default);
-                if (n > 0) Status($"{n} oyun dosyası güncellendi");
+                ShowProgress(Loc.T("pr.compare"));
+                var n = await GameMirror.SyncAsync(steamGame, l.GameDir, new Progress<string>(f => ShowProgress(Loc.F("pr.copy", f))), default);
+                if (n > 0) Status(Loc.F("s.filesUpdated", n));
             }
             var steam = new SteamCmd(l.ToolsDir, new ProcessRunner(), http);
-            ShowProgress("SteamCMD hazırlanıyor...");
+            ShowProgress(Loc.T("pr.steamcmd"));
             await steam.EnsureInstalledAsync(default);
 
-            var installer = new Installer(l, steam, progress);
+            var installer = NewInstaller(l, steam, progress);
             var ids = feed.BaseMods.Select(m => m.WorkshopId).Concat(state.UserMods).ToList();
             try
             {
@@ -220,16 +236,16 @@ public partial class MainWindow : Window
             catch (SteamCmdException ex) when (BaseModsPresent(l))
             {
                 // internet yoksa elindekilerle devam
-                Status("Güncellemeler kontrol edilemedi, son hâliyle açılıyor");
+                Status(Loc.T("s.offlineStart"));
                 Debug.WriteLine(ex);
             }
 
-            ShowProgress("Ayarlar yazılıyor...");
+            ShowProgress(Loc.T("pr.config"));
             installer.WriteConfig(state.MemoryMb);
             var ordered = OrderedMods(l);
             var missing = Zfl.Core.ModList.Missing(ordered);
             installer.WriteModList(ordered);
-            if (missing.Count > 0) Status($"Eksik gerekli modlar: {string.Join(", ", missing)}");
+            if (missing.Count > 0) Status(Loc.F("s.missingReq", string.Join(", ", missing)));
 
             if (steamGame is not null) state.LastBuildId ??= GameInfo.BuildId(steamGame);
             state.Save(StatePath);
@@ -273,15 +289,14 @@ public partial class MainWindow : Window
         var exe = Path.Combine(l.GameDir, "ProjectZomboid64.exe");
         var started = DateTime.Now;
         using var p = Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = l.GameDir, UseShellExecute = false })!;
-        Status("Oyun açıldı");
+        Status(Loc.T("s.started"));
         WindowState = WindowState.Minimized;
         await p.WaitForExitAsync();
         WindowState = WindowState.Normal;
         if (DateTime.Now - started < TimeSpan.FromSeconds(20))
         {
-            Status("Oyun hemen kapandı");
-            MessageBox.Show(this, "Oyun açıldıktan hemen sonra kapandı. Hata bildir sekmesindeki bilgileri ve console.txt dosyasını Viewpoint ekibine gönderebilirsin.",
-                "Zomboid FPS Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Status(Loc.T("s.quickExit"));
+            MessageBox.Show(this, Loc.T("msg.quickExit"), "Zomboid FPS Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
             Tabs.SelectedItem = BugTab;
         }
         else Status("");
@@ -292,7 +307,7 @@ public partial class MainWindow : Window
     void SetBusy(bool b)
     {
         busy = b;
-        PlayButton.IsEnabled = InstallButton.IsEnabled = AddButton.IsEnabled = !b;
+        PlayButton.IsEnabled = InstallButton.IsEnabled = AddButton.IsEnabled = LangBox.IsEnabled = !b;
     }
 
     // ---------- modlar ----------
@@ -300,30 +315,30 @@ public partial class MainWindow : Window
     async void OnAddMod(object sender, RoutedEventArgs e)
     {
         ModMessage.Text = "";
-        if (WorkshopInfo.ParseId(AddBox.Text) is not long id) { ModMessage.Text = "Bağlantıda Workshop numarası bulunamadı. Mod sayfasının adresini kopyalayıp yapıştır."; return; }
-        if (feed.BaseMods.Any(m => m.WorkshopId == id) || state.UserMods.Contains(id)) { ModMessage.Text = "Bu mod zaten listede."; return; }
-        if (Layout is not { } l) { ModMessage.Text = "Önce Oyna sekmesinden kurulumu tamamla."; return; }
+        if (WorkshopInfo.ParseId(AddBox.Text) is not long id) { ModMessage.Text = Loc.T("mods.badLink"); return; }
+        if (feed.BaseMods.Any(m => m.WorkshopId == id) || state.UserMods.Contains(id)) { ModMessage.Text = Loc.T("mods.dup"); return; }
+        if (Layout is not { } l) { ModMessage.Text = Loc.T("mods.needSetup"); return; }
 
         SetBusy(true);
         try
         {
             var info = (await WorkshopInfo.GetAsync(http, [id], default)).FirstOrDefault();
-            if (info is null) { ModMessage.Text = "Bu numarada bir Project Zomboid modu bulunamadı."; return; }
-            ModMessage.Text = $"İndiriliyor: {info.Title} ({info.SizeBytes / (1 << 20)} MB)";
+            if (info is null) { ModMessage.Text = Loc.T("mods.notFound"); return; }
+            ModMessage.Text = Loc.F("mods.downloading", info.Title, info.SizeBytes / (1 << 20));
             var steam = new SteamCmd(l.ToolsDir, new ProcessRunner(), http);
             await steam.EnsureInstalledAsync(default);
-            var installed = await new Installer(l, steam, new Progress<string>(_ => { })).InstallModsAsync([id], default);
+            var installed = await NewInstaller(l, steam, new Progress<string>(_ => { })).InstallModsAsync([id], default);
             state.UserMods.Add(id);
             state.Save(StatePath);
 
-            var notes = new List<string>();
+            var notes = new List<string> { Loc.F("mods.added", info.Title) };
             var game = GameInfo.Version(l.ZomboidDir) ?? feed.GameVersion;
-            if (installed.Any(m => !ModInfo.SupportsGame(m, game))) notes.Add($"Bu mod {game} için yapılmamış, sorun çıkarabilir.");
-            if (installed.Any(m => m.IsJava)) notes.Add("Java modu: bilgisayarında tam erişimle çalışır, yalnız güvendiğin modları ekle. Oyunda ZombieBuddy onay soracak.");
+            if (installed.Any(m => !ModInfo.SupportsGame(m, game))) notes.Add(Loc.F("mods.wrongVer", game));
+            if (installed.Any(m => m.IsJava)) notes.Add(Loc.T("mods.java"));
             var missing = Zfl.Core.ModList.Missing(OrderedMods(l));
-            if (missing.Count > 0) notes.Add($"Çalışması için şu modlar da gerekli: {string.Join(", ", missing)}. Workshop sayfasındaki \"Required items\" bölümüne bak.");
+            if (missing.Count > 0) notes.Add(Loc.F("mods.needs", string.Join(", ", missing)));
             new Installer(l, steam, new Progress<string>()).WriteModList(OrderedMods(l));
-            ModMessage.Text = notes.Count == 0 ? $"{info.Title} eklendi." : $"{info.Title} eklendi. " + string.Join(" ", notes);
+            ModMessage.Text = string.Join(" ", notes);
             AddBox.Text = "";
         }
         catch (Exception ex) { ModMessage.Text = ex.Message; }
@@ -332,8 +347,8 @@ public partial class MainWindow : Window
 
     void OnRemoveMod(object sender, RoutedEventArgs e)
     {
-        if (ModList.SelectedItem is not ModRow row) { ModMessage.Text = "Önce listeden bir mod seç."; return; }
-        if (row.IsBase) { ModMessage.Text = "Temel modlar kaldırılamaz."; return; }
+        if (ModList.SelectedItem is not ModRow row) { ModMessage.Text = Loc.T("mods.pick"); return; }
+        if (row.IsBase) { ModMessage.Text = Loc.T("mods.baseNoRemove"); return; }
         if (Layout is { } l)
         {
             foreach (var f in FolderNames(l, row.WorkshopId))
@@ -346,7 +361,7 @@ public partial class MainWindow : Window
         state.DisabledMods.Remove(row.WorkshopId);
         state.Save(StatePath);
         if (Layout is { } l2) new Installer(l2, null!, new Progress<string>()).WriteModList(OrderedMods(l2));
-        ModMessage.Text = $"{row.Name} kaldırıldı.";
+        ModMessage.Text = Loc.F("mods.removed", row.Name);
         RefreshAll();
     }
 
@@ -357,10 +372,23 @@ public partial class MainWindow : Window
         else if (!state.DisabledMods.Contains(row.WorkshopId)) state.DisabledMods.Add(row.WorkshopId);
         state.Save(StatePath);
         if (Layout is { } l) new Installer(l, null!, new Progress<string>()).WriteModList(OrderedMods(l));
-        ModMessage.Text = row.Enabled ? $"{row.Name} açıldı." : $"{row.Name} kapatıldı.";
+        ModMessage.Text = Loc.F(row.Enabled ? "mods.on" : "mods.off", row.Name);
     }
 
     // ---------- ayarlar / hata ----------
+
+    void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || LangBox.SelectedItem is not ComboBoxItem { Tag: string lang } || lang == Loc.Lang) return;
+        Loc.Lang = state.Language = lang;
+        state.Save(StatePath);
+        // metinler pencere kurulurken okunuyor; yeni dilde aynı yerde yeni pencere aç
+        var next = new MainWindow { WindowStartupLocation = WindowStartupLocation.Manual, Left = Left, Top = Top };
+        Application.Current.MainWindow = next;
+        next.Show();
+        next.Tabs.SelectedIndex = Tabs.SelectedIndex;
+        Close();
+    }
 
     void OnMemoryChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
@@ -371,7 +399,7 @@ public partial class MainWindow : Window
         state.Save(StatePath);
         if (Layout is { } l && File.Exists(Path.Combine(l.GameDir, "ProjectZomboid64.json")))
             new Installer(l, null!, new Progress<string>()).WriteConfig(state.MemoryMb);
-        Status("Bellek ayarı kaydedildi");
+        Status(Loc.T("s.memSaved"));
     }
 
     void OnOpenInstall(object sender, RoutedEventArgs e) { if (Layout is { } l) OpenFolder(l.Root); }
@@ -380,20 +408,16 @@ public partial class MainWindow : Window
 
     void OnCopyReport(object sender, RoutedEventArgs e)
     {
-        try { Clipboard.SetText(ReportBox.Text); Status("Kopyalandı"); }
-        catch { ReportBox.SelectAll(); ReportBox.Focus(); Status("Kopyalanamadı, metni seçip Ctrl+C ile kopyala"); }
+        try { Clipboard.SetText(ReportBox.Text); Status(Loc.T("s.copied")); }
+        catch { ReportBox.SelectAll(); ReportBox.Focus(); Status(Loc.T("s.copyFail")); }
     }
 
     static string? ModVersion(string modFolder)
     {
-        foreach (var sub in new[] { "42", "common", "" })
-        {
-            var f = Path.Combine(modFolder, sub, "mod.info");
-            if (!File.Exists(f)) continue;
-            var line = File.ReadLines(f).FirstOrDefault(x => x.StartsWith("modversion=", StringComparison.OrdinalIgnoreCase));
-            return line?.Split('=', 2)[1].Trim() ?? "?";
-        }
-        return null;
+        var f = ModInfo.InfoFiles(modFolder).FirstOrDefault(File.Exists);
+        if (f is null) return null;
+        var line = File.ReadLines(f).FirstOrDefault(x => x.StartsWith("modversion=", StringComparison.OrdinalIgnoreCase));
+        return line?.Split('=', 2)[1].Trim() ?? "?";
     }
 
     // ---------- pencere ----------

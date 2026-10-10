@@ -16,6 +16,7 @@ public sealed class LauncherState {
   public List<long> DisabledMods { get; set; } = [];
   public string? LastGameVersion { get; set; }
   public string? LastBuildId { get; set; }
+  public string? Language { get; set; }
   static readonly JsonSerializerOptions O = new() { WriteIndented = true };
   public static string DefaultPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ZomboidFpsLauncher", "state.json");
   public static LauncherState Load(string path) {
@@ -23,12 +24,13 @@ public sealed class LauncherState {
   }
   public void Save(string path) { Directory.CreateDirectory(Path.GetDirectoryName(path)!); File.WriteAllText(path, JsonSerializer.Serialize(this, O)); }
 }
-public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string> p) {
+public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string> p, IEnumerable<string>? fallbackDirs = null) {
+  public Func<long, string> Name { get; init; } = id => id.ToString();
   public async Task<IReadOnlyList<ModInfo>> InstallModsAsync(IEnumerable<long> ids, CancellationToken ct) {
     var result = new List<ModInfo>();
     foreach (var id in ids) {
-      p.Report($"İndiriliyor: {id}");
-      var item = await steam.DownloadAsync(id, ct);
+      p.Report(Loc.F("pr.download", Name(id)));
+      var item = await DownloadOrFallbackAsync(id, ct);
       if (id == 3619862853) PlaceZombieBuddy(item);
       foreach (var m in ModInfo.FindInWorkshopItem(item)) {
         var dst = Path.Combine(l.ModsDir, Path.GetFileName(m.Dir));
@@ -38,6 +40,17 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
       }
     }
     return result;
+  }
+  /// Atölye'den iner; inmezse (internet yok ya da mod Atölye'den kalkmış) eldeki kopyayı kullanır:
+  /// önce SteamCMD'nin önceki indirmesi, sonra verilen klasörler (Steam'in kendi Atölye klasörü gibi).
+  async Task<string> DownloadOrFallbackAsync(long id, CancellationToken ct) {
+    try { return await steam.DownloadAsync(id, ct); }
+    catch (SteamCmdException) {
+      var local = new[] { steam.ItemDir(id) }.Concat((fallbackDirs ?? []).Select(d => Path.Combine(d, id.ToString())))
+        .FirstOrDefault(d => ModInfo.FindInWorkshopItem(d).Count > 0);
+      if (local is null) throw;
+      return local;
+    }
   }
   public void PlaceZombieBuddy(string zbItemDir) {
     var libs = Path.Combine(zbItemDir, "mods", "ZombieBuddy", "libs");

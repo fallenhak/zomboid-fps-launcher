@@ -6,14 +6,20 @@ public static partial class SteamLocator {
   public static IReadOnlyList<string> LibraryFolders(string vdf) =>
     PathRx().Matches(vdf).Select(m => m.Groups["p"].Value.Replace(@"\\", @"\")).ToList();
   [SupportedOSPlatform("windows")]
-  public static string? FindGame() {
+  static IReadOnlyList<string> Libraries() {
     var steam = Registry.GetValue(@"HKEY_CURRENT_USER\Software\Valve\Steam", "SteamPath", null) as string;
-    if (steam is null) return null;
+    if (steam is null) return [];
     var vdf = Path.Combine(steam, "steamapps", "libraryfolders.vdf");
-    var libs = File.Exists(vdf) ? LibraryFolders(File.ReadAllText(vdf)) : [steam];
-    return libs.Select(l => Path.Combine(l, "steamapps", "common", "ProjectZomboid"))
-               .FirstOrDefault(d => File.Exists(Path.Combine(d, "ProjectZomboid64.exe")));
+    return File.Exists(vdf) ? LibraryFolders(File.ReadAllText(vdf)) : [steam];
   }
+  [SupportedOSPlatform("windows")]
+  public static string? FindGame() =>
+    Libraries().Select(l => Path.Combine(l, "steamapps", "common", "ProjectZomboid"))
+               .FirstOrDefault(d => File.Exists(Path.Combine(d, "ProjectZomboid64.exe")));
+  /// Steam'in abone olunan Atölye modlarını tuttuğu klasörler (yedek kaynak).
+  [SupportedOSPlatform("windows")]
+  public static IReadOnlyList<string> WorkshopDirs() =>
+    Libraries().Select(l => Path.Combine(l, "steamapps", "workshop", "content", SteamCmd.AppId.ToString())).Where(Directory.Exists).ToList();
 }
 public static class GameMirror {
   static readonly HashSet<string> Protected = new(StringComparer.OrdinalIgnoreCase) { "ProjectZomboid64.json" };
