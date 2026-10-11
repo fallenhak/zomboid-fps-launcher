@@ -424,6 +424,7 @@ public partial class MainWindow : Window
         SteamBox.IsChecked = state.SteamMode;
         SmoothBox.IsChecked = state.Smooth;
         FpsBox.IsChecked = state.ShowFps;
+        DebugBox.IsChecked = state.DebugMode;
     }
 
     void OnToggleSetting(object sender, RoutedEventArgs e)
@@ -432,6 +433,7 @@ public partial class MainWindow : Window
         state.SteamMode = SteamBox.IsChecked == true;
         state.Smooth = SmoothBox.IsChecked == true;
         state.ShowFps = FpsBox.IsChecked == true;
+        state.DebugMode = DebugBox.IsChecked == true;
         state.Save(StatePath);
         Status(Loc.T("s.settingSaved"));
     }
@@ -484,9 +486,9 @@ public partial class MainWindow : Window
     {
         var exe = Path.Combine(l.GameDir, "ProjectZomboid64.exe");
         var started = DateTime.Now;
-        using var p = Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = l.GameDir, UseShellExecute = false })!;
+        using var p = Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = l.GameDir, UseShellExecute = false, Arguments = state.DebugMode ? "-debug" : "" })!;
         Status(Loc.T("s.started"));
-        Log.Write($"game started: {exe}");
+        Log.Write($"game started: {exe}{(state.DebugMode ? " -debug" : "")}");
         WindowState = WindowState.Minimized;
         await p.WaitForExitAsync();
         Log.Write($"game closed, exit code {p.ExitCode}, ran {(DateTime.Now - started).TotalSeconds:0} s");
