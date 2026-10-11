@@ -65,6 +65,7 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
   public static IReadOnlyList<string> Stray(InstallLayout l, IEnumerable<string> keepFolders) {
     if (!Directory.Exists(l.ModsDir)) return [];
     var keep = keepFolders.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    keep.Add("examplemod"); // oyun her açılışta kendisi koyuyor
     return Directory.GetDirectories(l.ModsDir).Select(d => Path.GetFileName(d)!).Where(n => !keep.Contains(n)).ToList();
   }
   public static IReadOnlyList<string> RemoveStray(InstallLayout l, IEnumerable<string> keepFolders) {

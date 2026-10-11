@@ -356,7 +356,12 @@ public partial class MainWindow : Window
                 // zamanlar indirmeden önce alınır: indirme sırasında gelen güncelleme bir dahaki denetimde yakalanır
                 IReadOnlyList<WorkshopItem> times = [];
                 try { times = await WorkshopInfo.GetAsync(http, ids, default); } catch (Exception ex) { Log.Error("workshop info", ex); }
-                await installer.InstallModsAsync(ids, default);
+                // yalnız değişen ya da eksik olanlar indirilir; Steam'e ulaşılamadıysa hepsi
+                var changed = times.Count == 0 ? ids : ids.Where(id =>
+                    times.FirstOrDefault(t => t.Id == id) is not { } t || t.UpdatedUnix > state.ModUpdated.GetValueOrDefault(id)
+                    || !FolderNames(l, id).Any(f => Directory.Exists(Path.Combine(l.ModsDir, f)))).ToList();
+                Log.Write($"downloading {changed.Count} of {ids.Count} mods: {string.Join(", ", changed.Select(ModName))}");
+                await installer.InstallModsAsync(changed, default);
                 foreach (var t in times) state.ModUpdated[t.Id] = t.UpdatedUnix;
                 foreach (var gone in Installer.RemoveStray(l, KeepFolders(l, ids))) Log.Write($"removed mod folder no longer in the list: {gone}");
             }
