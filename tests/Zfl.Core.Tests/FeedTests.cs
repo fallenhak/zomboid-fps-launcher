@@ -29,6 +29,7 @@ public class InstallerTests {
     new Installer(l, null!, new Progress<string>()).WriteModList([
       new ModInfo("ZombieBuddy","ZB","",[],null,null,true), new ModInfo("Viewpoint","V","",["ZombieBuddy"],null,null,true)]);
     var t = File.ReadAllText(Path.Combine(l.ModsDir, "default.txt"));
-    Assert.DoesNotContain("ZombieBuddy,", t); Assert.Contains("\\Viewpoint,", t);
+    // Viewpoint ZombieBuddy'yi gerektiriyor; listede olmazsa oyun Viewpoint'i de açmaz
+    Assert.Contains("mod = ZombieBuddy,", t); Assert.Contains("mod = Viewpoint,", t);
   }
 }
