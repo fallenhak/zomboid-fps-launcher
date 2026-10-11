@@ -17,6 +17,10 @@ public sealed class LauncherState {
   public string? LastGameVersion { get; set; }
   public string? LastBuildId { get; set; }
   public string? Language { get; set; }
+  /// Viewpoint grafik kalitesi; null = ekran kartına göre otomatik.
+  public string? GraphicsPreset { get; set; }
+  /// Oyuncu Viewpoint ilk kurulum ekranını tekrar görmek istedi; o ekran bitene kadar launcher ayar yazmaz.
+  public bool ViewpointSetupWanted { get; set; }
   /// Kullanıcının mod sırası (mod id'leri; henüz inmemiş Workshop öğeleri için "ws:<numara>").
   public List<string> ModOrder { get; set; } = [];
   static readonly JsonSerializerOptions O = new() { WriteIndented = true };

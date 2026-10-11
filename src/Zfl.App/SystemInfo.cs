@@ -21,6 +21,35 @@ static class SystemInfo
         return GlobalMemoryStatusEx(ref m) ? (long)m.TotalPhys : 8L << 30;
     }
 
+    /// En büyük ekran kartı belleği (MiB); bulunamazsa 0.
+    public static long VramMiB()
+    {
+        using var cls = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}");
+        if (cls is null) return 0;
+        long best = 0;
+        foreach (var name in cls.GetSubKeyNames().Where(n => n.All(char.IsDigit)))
+        {
+            try
+            {
+                using var k = cls.OpenSubKey(name);
+                long bytes = k?.GetValue("HardwareInformation.qwMemorySize") switch
+                {
+                    long q => q,
+                    byte[] b when b.Length >= 8 => BitConverter.ToInt64(b),
+                    _ => k?.GetValue("HardwareInformation.MemorySize") switch
+                    {
+                        int d => (uint)d,
+                        byte[] b when b.Length >= 4 => BitConverter.ToUInt32(b),
+                        _ => 0,
+                    },
+                };
+                best = Math.Max(best, bytes >> 20);
+            }
+            catch (System.Security.SecurityException) { }
+        }
+        return best;
+    }
+
     /// Ekran kartları: Windows'un görüntü bağdaştırıcısı sınıfındaki ad + sürücü sürümü.
     public static IEnumerable<string> Gpus()
     {

@@ -7,7 +7,9 @@ public static class LaunchConfig {
     var root = JsonNode.Parse(originalJson)!.AsObject();
     var old = root["vmArgs"]?.AsArray().Select(n => n!.GetValue<string>()) ?? [];
     var args = new JsonArray();
-    foreach (var a in old.Where(a => !Ours.Any(a.StartsWith))) args.Add(a);
+    // Viewpoint ZGC ile açılınca çöp toplayıcıyı değiştirip oyunu yeniden başlatmak ister; baştan G1 kullanılır.
+    foreach (var a in old.Where(a => !Ours.Any(a.StartsWith) && a is not ("-XX:+UseZGC" or "-XX:+ZGenerational"))) args.Add(a);
+    if (!args.Any(a => (string?)a == "-XX:+UseG1GC")) args.Add("-XX:+UseG1GC");
     args.Add($"-Xmx{memoryMb}m");
     args.Add("-Dzomboid.steam=0");
     args.Add($"-Duser.home={Fwd(l.UserHome)}");

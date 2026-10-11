@@ -62,6 +62,7 @@ public partial class MainWindow : Window
             Loc.Lang = prev;
         }
         LangBox.SelectedIndex = Array.IndexOf(Loc.Languages, Loc.Lang);
+        FillGraphics();
 
         try
         {
@@ -279,6 +280,7 @@ public partial class MainWindow : Window
             var ordered = OrderedMods(l);
             var missing = Zfl.Core.ModList.Missing(ordered);
             installer.WriteModList(ordered);
+            PrepareGameSettings(l);
             if (missing.Count > 0) Status(Loc.F("s.missingReq", string.Join(", ", missing)));
 
             if (steamGame is not null) state.LastBuildId ??= GameInfo.BuildId(steamGame);
@@ -297,6 +299,24 @@ public partial class MainWindow : Window
             ShowProgress(null);
             RefreshAll();
         }
+    }
+
+    /// Tıkla oyna: temel Java modlarını ZombieBuddy'ye önceden onaylatır, Viewpoint ilk kurulumunu doldurur.
+    void PrepareGameSettings(InstallLayout l)
+    {
+        ZbApprovals.ApproveMods(l, OrderedRows(l).Where(r => r.IsBase && r.Info is { IsJava: true }).Select(r => r.Info!));
+        if (state.ViewpointSetupWanted)
+        {
+            if (ViewpointSetup.Finished(l)) state.ViewpointSetupWanted = false;
+            return;
+        }
+        if (!ViewpointSetup.Finished(l)) ApplyGraphics(l);
+    }
+
+    void ApplyGraphics(InstallLayout l)
+    {
+        var vram = SystemInfo.VramMiB();
+        ViewpointSetup.Apply(l, state.GraphicsPreset ?? ViewpointSetup.PresetFor(vram), ViewpointSetup.NeedsCompression(vram));
     }
 
     bool BaseModsPresent(InstallLayout l) =>
@@ -465,6 +485,34 @@ public partial class MainWindow : Window
         if (Layout is { } l && File.Exists(Path.Combine(l.GameDir, "ProjectZomboid64.json")))
             new Installer(l, null!, new Progress<string>()).WriteConfig(state.MemoryMb);
         Status(Loc.T("s.memSaved"));
+    }
+
+    void FillGraphics()
+    {
+        GraphicsBox.Items.Clear();
+        GraphicsBox.Items.Add(new ComboBoxItem { Content = Loc.F("set.gfxAuto", ViewpointSetup.PresetFor(SystemInfo.VramMiB())), Tag = "" });
+        foreach (var p in ViewpointSetup.Presets) GraphicsBox.Items.Add(new ComboBoxItem { Content = p, Tag = p });
+        GraphicsBox.SelectedIndex = state.GraphicsPreset is { } g ? Array.IndexOf(ViewpointSetup.Presets, g) + 1 : 0;
+    }
+
+    void OnGraphicsChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || GraphicsBox.SelectedItem is not ComboBoxItem { Tag: string tag }) return;
+        var preset = tag.Length == 0 ? null : tag;
+        if (preset == state.GraphicsPreset) return;
+        state.GraphicsPreset = preset;
+        state.ViewpointSetupWanted = false;
+        state.Save(StatePath);
+        if (Layout is { } l && Directory.Exists(l.ZomboidDir)) ApplyGraphics(l);
+        Status(Loc.T("s.gfxSaved"));
+    }
+
+    void OnViewpointSetupAgain(object sender, RoutedEventArgs e)
+    {
+        if (Layout is { } l) ViewpointSetup.Reset(l);
+        state.ViewpointSetupWanted = true;
+        state.Save(StatePath);
+        Status(Loc.T("s.vpSetupAgain"));
     }
 
     void OnOpenInstall(object sender, RoutedEventArgs e) { if (Layout is { } l) OpenFolder(l.Root); }

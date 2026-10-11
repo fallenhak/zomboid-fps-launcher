@@ -15,8 +15,17 @@ public sealed record ModInfo(string Id, string Name, string Dir, IReadOnlyList<s
       ? r.SelectMany(x => x.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Select(x => x.TrimStart('\\')).Where(x => x.Length > 0).ToList()
       : [];
     return new ModInfo(id, One("name") ?? id, modFolder, Ids("require"), One("versionMin"), One("versionMax"), One("javaJarFile") is not null) {
+      JavaJarFile = One("javaJarFile"), InfoDir = Path.GetDirectoryName(file)!,
       LoadAfter = Ids("loadModAfter"), LoadBefore = Ids("loadModBefore"), Incompatible = Ids("incompatible"),
     };
+  }
+  public string? JavaJarFile { get; init; }
+  public string InfoDir { get; init; } = "";
+  /// Jar dosyasının yeri: önce mod.info'nun klasörüne göre, yoksa sürüm/common/kök klasörlerinde aranır.
+  public string? JarPath() {
+    if (JavaJarFile is null) return null;
+    var cands = new[] { InfoDir }.Concat(InfoFiles(Dir).Select(f => Path.GetDirectoryName(f)!));
+    return cands.Select(d => Path.GetFullPath(Path.Combine(d, JavaJarFile))).FirstOrDefault(File.Exists);
   }
   public IReadOnlyList<string> LoadAfter { get; init; } = [];
   public IReadOnlyList<string> LoadBefore { get; init; } = [];

@@ -108,6 +108,11 @@ public static class Loc {
     ["set.notInstalled"] = "kurulmadı",
     ["set.openFolder"] = "Klasörü aç",
     ["s.memSaved"] = "Bellek kaydedildi",
+    ["set.gfx"] = "Grafik kalitesi",
+    ["set.gfxAuto"] = "Otomatik ({0})",
+    ["set.vpSetup"] = "Viewpoint kurulum ekranını tekrar göster",
+    ["s.gfxSaved"] = "Grafik kalitesi kaydedildi",
+    ["s.vpSetupAgain"] = "Oyunu açınca Viewpoint kurulum ekranı tekrar çıkacak",
 
     ["bug.intro"] = "Viewpoint açıkken bir sorun çıkarsa Viewpoint ekibine yaz. Aşağıdakini mesajına yapıştır, console.txt'yi de ekle.",
     ["bug.copy"] = "Kopyala",
@@ -213,6 +218,11 @@ public static class Loc {
     ["set.notInstalled"] = "not installed",
     ["set.openFolder"] = "Open folder",
     ["s.memSaved"] = "Memory saved",
+    ["set.gfx"] = "Graphics quality",
+    ["set.gfxAuto"] = "Automatic ({0})",
+    ["set.vpSetup"] = "Show the Viewpoint setup screen again",
+    ["s.gfxSaved"] = "Graphics quality saved",
+    ["s.vpSetupAgain"] = "The Viewpoint setup screen will show next time the game starts",
 
     ["bug.intro"] = "If something breaks with Viewpoint on, tell the Viewpoint team. Paste this into your message and attach console.txt.",
     ["bug.copy"] = "Copy",
