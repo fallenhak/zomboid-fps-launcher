@@ -23,13 +23,15 @@ public static partial class SteamLocator {
 }
 public static class GameMirror {
   static readonly HashSet<string> Protected = new(StringComparer.OrdinalIgnoreCase) { "ProjectZomboid64.json" };
+  // Steam kopyasında eski ZombieBuddy olabilir; bunları launcher moddan koyar, Steam'den hiç alınmaz
+  static readonly HashSet<string> Skipped = new(StringComparer.OrdinalIgnoreCase) { "ZombieBuddy.jar", "zbNative.dll" };
   public static Task<int> SyncAsync(string src, string dst, IProgress<string>? p, CancellationToken ct) => Task.Run(() => {
     int n = 0;
     foreach (var f in Directory.EnumerateFiles(src, "*", SearchOption.AllDirectories)) {
       ct.ThrowIfCancellationRequested();
       var rel = Path.GetRelativePath(src, f);
       var target = Path.Combine(dst, rel);
-      if (Protected.Contains(rel) && File.Exists(target)) continue;
+      if (Protected.Contains(rel) && File.Exists(target) || Skipped.Contains(rel)) continue;
       var s = new FileInfo(f); var t = new FileInfo(target);
       if (t.Exists && t.Length == s.Length && t.LastWriteTimeUtc == s.LastWriteTimeUtc) continue;
       Directory.CreateDirectory(t.DirectoryName!);

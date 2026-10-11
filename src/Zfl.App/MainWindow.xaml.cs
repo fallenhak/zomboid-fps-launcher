@@ -315,6 +315,7 @@ public partial class MainWindow : Window
             installer.WriteConfig(state.MemoryMb, UseSteam);
             var ordered = OrderedMods(l);
             installer.WriteModList(ordered);
+            installer.SyncZombieBuddy();
             PrepareGameSettings(l);
             var missing = Zfl.Core.ModList.Missing(ordered);
             if (missing.Count > 0) Status(Loc.F("s.missingReq", string.Join(", ", missing)));
@@ -378,6 +379,7 @@ public partial class MainWindow : Window
             var ordered = OrderedMods(l);
             var missing = Zfl.Core.ModList.Missing(ordered);
             installer.WriteModList(ordered);
+            installer.SyncZombieBuddy();
             PrepareGameSettings(l);
             if (missing.Count > 0) Status(Loc.F("s.missingReq", string.Join(", ", missing)));
 

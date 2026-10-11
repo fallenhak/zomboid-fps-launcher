@@ -85,6 +85,14 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
     foreach (var n in stray) Directory.Delete(Path.Combine(l.ModsDir, n), true);
     return stray;
   }
+  /// Oyun klasöründeki ZombieBuddy'yi kurulu modla aynı tutar; farklıysa ZB açılışta "yeni sürüm kuruldu, yeniden başlat" der.
+  public void SyncZombieBuddy() {
+    var libs = Path.Combine(l.ModsDir, "ZombieBuddy", "libs");
+    foreach (var f in new[] { "zbNative.dll", "ZombieBuddy.jar" }) {
+      var src = Path.Combine(libs, f); var dst = Path.Combine(l.GameDir, f);
+      if (File.Exists(src) && (!File.Exists(dst) || !File.ReadAllBytes(src).AsSpan().SequenceEqual(File.ReadAllBytes(dst)))) File.Copy(src, dst, true);
+    }
+  }
   public void PlaceZombieBuddy(string zbItemDir) {
     var libs = Path.Combine(zbItemDir, "mods", "ZombieBuddy", "libs");
     Directory.CreateDirectory(l.GameDir);
