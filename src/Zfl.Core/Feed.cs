@@ -6,7 +6,8 @@ public sealed record Feed(string GameVersion, IReadOnlyList<FeedMod> BaseMods, s
   public static Feed Parse(string json) => JsonSerializer.Deserialize<Feed>(json, O) ?? throw new InvalidDataException("feed boş");
   public const string Url = "https://raw.githubusercontent.com/fallenhak/zomboid-fps-launcher/main/feed.json";
   public static Feed Builtin { get; } = new("42.21", [
-    new(3619862853, "ZombieBuddy"), new(3809306528, "Project Viewpoint"), new(3813172420, "TREE in 3D")], "0.1.0", null);
+    new(3619862853, "ZombieBuddy"), new(3809306528, "Project Viewpoint"), new(3810302175, "6244 3D models for Viewpoint"),
+    new(3813172420, "TREE in 3D"), new(3811256204, "Viewpoint QOL")], "0.1.0", null);
 }
 public sealed class LauncherState {
   public string? InstallRoot { get; set; }
