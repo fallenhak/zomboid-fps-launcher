@@ -40,12 +40,13 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
       p.Report(Loc.F("pr.download", Name(id)));
       var item = await DownloadOrFallbackAsync(id, ct);
       if (id == 3619862853) PlaceZombieBuddy(item);
-      foreach (var m in ModInfo.FindInWorkshopItem(item)) {
+      // kopyalama arka planda: büyük paketlerde pencere donmasın
+      result.AddRange(await Task.Run(() => ModInfo.FindInWorkshopItem(item).Select(m => {
         var dst = Path.Combine(l.ModsDir, Path.GetFileName(m.Dir));
         if (Directory.Exists(dst)) Directory.Delete(dst, true);
         CopyDir(m.Dir, dst);
-        result.Add(ModInfo.Read(dst)!);
-      }
+        return ModInfo.Read(dst)!;
+      }).ToList(), ct));
     }
     return result;
   }
