@@ -257,6 +257,11 @@ public partial class MainWindow : Window
             return true;
         }
         var ids = feed.BaseMods.Select(m => m.WorkshopId).Concat(state.UserMods).ToList();
+        if (Installer.Stray(l, KeepFolders(l, ids)) is [_, ..] stray)
+        {
+            Log.Write($"update: mods to remove: {string.Join(", ", stray)}");
+            return true;
+        }
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
@@ -353,6 +358,7 @@ public partial class MainWindow : Window
                 try { times = await WorkshopInfo.GetAsync(http, ids, default); } catch (Exception ex) { Log.Error("workshop info", ex); }
                 await installer.InstallModsAsync(ids, default);
                 foreach (var t in times) state.ModUpdated[t.Id] = t.UpdatedUnix;
+                foreach (var gone in Installer.RemoveStray(l, KeepFolders(l, ids))) Log.Write($"removed mod folder no longer in the list: {gone}");
             }
             catch (SteamCmdException ex) when (BaseModsPresent(l))
             {
@@ -411,11 +417,24 @@ public partial class MainWindow : Window
     bool BaseModsPresent(InstallLayout l) =>
         feed.BaseMods.All(m => FolderNames(l, m.WorkshopId).Any(f => Directory.Exists(Path.Combine(l.ModsDir, f))));
 
-    /// Bir Workshop öğesinin içerdiği mod klasör adları (SteamCMD indirme klasöründen).
+    /// Listedeki modların klasörleri. Biri bile çözülemezse hepsi tutulur (yanlışlıkla silmemek için).
+    static List<string> KeepFolders(InstallLayout l, IEnumerable<long> ids)
+    {
+        var per = ids.Select(id => FolderNames(l, id).ToList()).ToList();
+        if (per.Any(f => f.Count == 0) && Directory.Exists(l.ModsDir))
+            return Directory.GetDirectories(l.ModsDir).Select(d => Path.GetFileName(d)!).ToList();
+        return per.SelectMany(f => f).ToList();
+    }
+
+    static readonly Lazy<IReadOnlyList<string>> SteamWorkshopDirs = new(SteamLocator.WorkshopDirs);
+
+    /// Bir Workshop öğesinin içerdiği mod klasör adları (SteamCMD indirmesinden, yoksa Steam'in Atölye klasöründen).
     static IEnumerable<string> FolderNames(InstallLayout l, long id)
     {
         var steam = new SteamCmd(l.ToolsDir, new ProcessRunner(), new HttpClient());
-        return ModInfo.FindInWorkshopItem(steam.ItemDir(id)).Select(m => Path.GetFileName(m.Dir));
+        return new[] { steam.ItemDir(id) }.Concat(SteamWorkshopDirs.Value.Select(d => Path.Combine(d, id.ToString())))
+            .Select(ModInfo.FindInWorkshopItem).FirstOrDefault(m => m.Count > 0, [])
+            .Select(m => Path.GetFileName(m.Dir));
     }
 
     /// Oyuna yazılacak sıra: açık ve inmiş modlar, launcher'daki sırayla.

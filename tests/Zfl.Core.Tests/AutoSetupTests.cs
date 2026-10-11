@@ -63,3 +63,15 @@ public class AutoSetupTests : IDisposable {
     Assert.Single(System.Text.RegularExpressions.Regex.Matches(json[..json.IndexOf("windows")], "UseG1GC"));
   }
 }
+
+public class StrayModTests {
+  [Fact] public void RemovesFoldersNotInList() {
+    var l = new InstallLayout(Directory.CreateTempSubdirectory("zfl").FullName);
+    foreach (var n in new[] { "Viewpoint", "ViewpointTileFix" }) Directory.CreateDirectory(Path.Combine(l.ModsDir, n));
+    File.WriteAllText(Path.Combine(l.ModsDir, "default.txt"), "");
+    Assert.Equal(["ViewpointTileFix"], Installer.RemoveStray(l, ["viewpoint"]));
+    Assert.True(Directory.Exists(Path.Combine(l.ModsDir, "Viewpoint")));
+    Assert.True(File.Exists(Path.Combine(l.ModsDir, "default.txt")));
+    Assert.False(Directory.Exists(Path.Combine(l.ModsDir, "ViewpointTileFix")));
+  }
+}

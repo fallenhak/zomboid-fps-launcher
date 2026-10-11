@@ -61,6 +61,17 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
       return local;
     }
   }
+  /// Mod klasörü launcher'ındır: listede olmayan klasörler (temel listeden çıkan modlar gibi) silinir.
+  public static IReadOnlyList<string> Stray(InstallLayout l, IEnumerable<string> keepFolders) {
+    if (!Directory.Exists(l.ModsDir)) return [];
+    var keep = keepFolders.ToHashSet(StringComparer.OrdinalIgnoreCase);
+    return Directory.GetDirectories(l.ModsDir).Select(d => Path.GetFileName(d)!).Where(n => !keep.Contains(n)).ToList();
+  }
+  public static IReadOnlyList<string> RemoveStray(InstallLayout l, IEnumerable<string> keepFolders) {
+    var stray = Stray(l, keepFolders);
+    foreach (var n in stray) Directory.Delete(Path.Combine(l.ModsDir, n), true);
+    return stray;
+  }
   public void PlaceZombieBuddy(string zbItemDir) {
     var libs = Path.Combine(zbItemDir, "mods", "ZombieBuddy", "libs");
     Directory.CreateDirectory(l.GameDir);
