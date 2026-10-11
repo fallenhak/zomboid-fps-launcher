@@ -24,7 +24,7 @@ public class InstallerTests {
     var json = File.ReadAllText(Path.Combine(l.GameDir, "ProjectZomboid64.json"));
     Assert.Contains("-Xmx6144m", json); Assert.DoesNotContain("-Xmx8192m", json);
   }
-  [Fact] public void ModListSkipsZombieBuddy() {
+  [Fact] public void ModListKeepsZombieBuddy() {
     var root = Directory.CreateTempSubdirectory("zfl").FullName; var l = new InstallLayout(root);
     new Installer(l, null!, new Progress<string>()).WriteModList([
       new ModInfo("ZombieBuddy","ZB","",[],null,null,true), new ModInfo("Viewpoint","V","",["ZombieBuddy"],null,null,true)]);

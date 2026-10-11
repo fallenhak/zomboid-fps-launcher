@@ -53,8 +53,9 @@ public sealed record ModInfo(string Id, string Name, string Dir, IReadOnlyList<s
   }
 }
 public static class ModList {
+  /// Oyunun kendi yazdığı biçim: ters bölü yok, ZombieBuddy de listede; aksi halde oyun "0 mods" yükler.
   public static string DefaultTxt(IEnumerable<string> modIds) =>
-    "VERSION = 1,\n\nmods\n{\n" + string.Concat(modIds.Select(id => $"    mod = \\{id},\n")) + "}\n";
+    "VERSION = 1,\n\nmods\n{\n" + string.Concat(modIds.Select(id => $"    mod = {id},\n")) + "}\n\nmaps\n{\n}\n";
   public static IReadOnlyList<string> Missing(IEnumerable<ModInfo> mods) {
     var list = mods.ToList(); var have = list.Select(m => m.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
     return list.SelectMany(m => m.Requires).Where(r => !have.Contains(r)).Distinct().ToList();

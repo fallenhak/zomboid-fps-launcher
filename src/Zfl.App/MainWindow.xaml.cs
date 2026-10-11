@@ -392,6 +392,8 @@ public partial class MainWindow : Window
     void PrepareGameSettings(InstallLayout l)
     {
         ZbApprovals.ApproveMods(l, OrderedRows(l).Where(r => r.IsBase && r.Info is { IsJava: true }).Select(r => r.Info!));
+        // Viewpoint 12 GB altı kartlarda doku sıkıştırma istiyor; kurulum ekranı istense de baştan açık olsun
+        if (ViewpointSetup.NeedsCompression(SystemInfo.VramMiB())) ViewpointSetup.EnableCompression(l);
         if (state.ViewpointSetupWanted)
         {
             if (ViewpointSetup.Finished(l)) state.ViewpointSetupWanted = false;

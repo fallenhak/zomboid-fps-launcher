@@ -68,8 +68,11 @@ public static class ViewpointSetup {
       ["onboarding.finished"] = "true", ["graphics.mode"] = "Modern", ["graphics.pack"] = pack,
       ["graphics.preset"] = preset, [$"packPreset.{pack}"] = preset,
     });
-    if (compression) SetKeys(OptionsFile(l), new Dictionary<string, string> { ["textureCompression"] = "true" });
+    if (compression) EnableCompression(l);
   }
+
+  public static void EnableCompression(InstallLayout l) =>
+    SetKeys(OptionsFile(l), new Dictionary<string, string> { ["textureCompression"] = "true" });
 
   /// Viewpoint ilk kurulum ekranı bir sonraki açılışta tekrar çıksın.
   public static void Reset(InstallLayout l) {

@@ -30,7 +30,7 @@ public class ModInfoTests : IDisposable {
 public class ModListTests {
   [Fact] public void DefaultTxt() {
     var t = ModList.DefaultTxt(["ZombieBuddy", "Viewpoint"]);
-    Assert.Contains("mod = \\ZombieBuddy,", t); Assert.Contains("mod = \\Viewpoint,", t);
+    Assert.Contains("mod = ZombieBuddy,", t); Assert.Contains("mod = Viewpoint,", t); Assert.DoesNotContain("\\", t);
     Assert.True(t.IndexOf("ZombieBuddy") < t.IndexOf("Viewpoint"));
   }
   [Fact] public void Missing() {

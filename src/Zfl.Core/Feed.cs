@@ -74,7 +74,7 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
   }
   public void WriteModList(IEnumerable<ModInfo> ordered) {
     Directory.CreateDirectory(l.ModsDir);
-    File.WriteAllText(Path.Combine(l.ModsDir, "default.txt"), ModList.DefaultTxt(ordered.Where(m => !m.Id.Equals("ZombieBuddy", StringComparison.OrdinalIgnoreCase)).Select(m => m.Id)));
+    File.WriteAllText(Path.Combine(l.ModsDir, "default.txt"), ModList.DefaultTxt(ordered.Select(m => m.Id)));
   }
   static void CopyDir(string src, string dst) {
     foreach (var f in Directory.EnumerateFiles(src, "*", SearchOption.AllDirectories)) {
