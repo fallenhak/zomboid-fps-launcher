@@ -4,13 +4,14 @@ public static class LaunchConfig {
   static readonly string[] Ours = ["-Xmx", "-Xms", "-Dzomboid.steam=", "-Duser.home=", "-Ddeployment.user.cachedir=", "-agentlib:zbNative", "-javaagent:ZombieBuddy"];
   static bool IsZgc(string a) => a is "-XX:+UseZGC" or "-XX:+ZGenerational";
   static string Fwd(string p) => p.Replace('\\', '/');
-  public static string Apply(string originalJson, InstallLayout l, int memoryMb) {
+  /// steam: true ise oyun Steam'e bağlanır (çok oyunculu sunucular, Shift+Tab); Steam açık olmalı.
+  public static string Apply(string originalJson, InstallLayout l, int memoryMb, bool steam = false) {
     var root = JsonNode.Parse(originalJson)!.AsObject();
     var old = root["vmArgs"]?.AsArray().Select(n => n!.GetValue<string>()) ?? [];
     var args = new JsonArray();
     foreach (var a in old.Where(a => !Ours.Any(a.StartsWith) && !IsZgc(a))) args.Add(a);
     args.Add($"-Xmx{memoryMb}m");
-    args.Add("-Dzomboid.steam=0");
+    args.Add($"-Dzomboid.steam={(steam ? 1 : 0)}");
     args.Add($"-Duser.home={Fwd(l.UserHome)}");
     args.Add($"-agentlib:zbNative=config_dir={Fwd(l.ZbConfigDir)}");
     root["vmArgs"] = args;

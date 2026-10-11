@@ -63,6 +63,7 @@ public partial class MainWindow : Window
         }
         LangBox.SelectedIndex = Array.IndexOf(Loc.Languages, Loc.Lang);
         FillGraphics();
+        FillToggles();
 
         try
         {
@@ -311,7 +312,7 @@ public partial class MainWindow : Window
         try
         {
             var installer = new Installer(l, null!, new Progress<string>());
-            installer.WriteConfig(state.MemoryMb);
+            installer.WriteConfig(state.MemoryMb, UseSteam);
             var ordered = OrderedMods(l);
             installer.WriteModList(ordered);
             PrepareGameSettings(l);
@@ -373,7 +374,7 @@ public partial class MainWindow : Window
             }
 
             ShowProgress(Loc.T("pr.config"));
-            installer.WriteConfig(state.MemoryMb);
+            installer.WriteConfig(state.MemoryMb, UseSteam);
             var ordered = OrderedMods(l);
             var missing = Zfl.Core.ModList.Missing(ordered);
             installer.WriteModList(ordered);
@@ -411,6 +412,28 @@ public partial class MainWindow : Window
             return;
         }
         if (!ViewpointSetup.Finished(l)) ApplyGraphics(l);
+        if (state.Smooth) ViewpointSetup.ApplySmooth(l);
+        ViewpointSetup.SetFpsOverlay(l, state.ShowFps);
+    }
+
+    /// Steam açıksa oyun Steam'e bağlı açılır; kapalıysa Steam'siz (yine de oynanır, sunucular hariç).
+    bool UseSteam => state.SteamMode && Process.GetProcessesByName("steam").Length > 0;
+
+    void FillToggles()
+    {
+        SteamBox.IsChecked = state.SteamMode;
+        SmoothBox.IsChecked = state.Smooth;
+        FpsBox.IsChecked = state.ShowFps;
+    }
+
+    void OnToggleSetting(object sender, RoutedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        state.SteamMode = SteamBox.IsChecked == true;
+        state.Smooth = SmoothBox.IsChecked == true;
+        state.ShowFps = FpsBox.IsChecked == true;
+        state.Save(StatePath);
+        Status(Loc.T("s.settingSaved"));
     }
 
     void ApplyGraphics(InstallLayout l)
@@ -600,7 +623,7 @@ public partial class MainWindow : Window
         state.MemoryMb = gb * 1024;
         state.Save(StatePath);
         if (Layout is { } l && File.Exists(Path.Combine(l.GameDir, "ProjectZomboid64.json")))
-            new Installer(l, null!, new Progress<string>()).WriteConfig(state.MemoryMb);
+            new Installer(l, null!, new Progress<string>()).WriteConfig(state.MemoryMb, UseSteam);
         Status(Loc.T("s.memSaved"));
     }
 

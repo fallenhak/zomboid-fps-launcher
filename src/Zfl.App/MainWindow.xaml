@@ -113,6 +113,7 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock Text="{l:T set.lang}" Foreground="{StaticResource Dim}" Margin="0,4" VerticalAlignment="Center" />
                     <ComboBox x:Name="LangBox" Grid.Column="1" Width="160" HorizontalAlignment="Left" Margin="0,4" SelectionChanged="OnLanguageChanged" />
@@ -135,7 +136,13 @@
                         <ComboBox x:Name="GraphicsBox" Width="160" SelectionChanged="OnGraphicsChanged" />
                         <Button Content="{l:T set.vpSetup}" Click="OnViewpointSetupAgain" Margin="8,0,0,0" />
                     </StackPanel>
-                    <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
+                    <TextBlock Grid.Row="6" Text="{l:T set.game}" Foreground="{StaticResource Dim}" Margin="0,4" />
+                    <StackPanel Grid.Row="6" Grid.Column="1" Margin="0,4">
+                        <CheckBox x:Name="SteamBox" Content="{l:T set.steamMode}" Margin="0,2" Click="OnToggleSetting" />
+                        <CheckBox x:Name="SmoothBox" Content="{l:T set.smooth}" Margin="0,2" Click="OnToggleSetting" />
+                        <CheckBox x:Name="FpsBox" Content="{l:T set.fps}" Margin="0,2" Click="OnToggleSetting" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
                         <Button Content="{l:T set.openFolder}" Click="OnOpenInstall" />
                     </StackPanel>
                 </Grid>

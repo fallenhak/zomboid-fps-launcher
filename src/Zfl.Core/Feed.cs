@@ -23,6 +23,12 @@ public sealed class LauncherState {
   public bool ViewpointSetupWanted { get; set; }
   /// Kurulu Workshop öğelerinin Steam'deki güncellenme zamanı (unix); güncelleme denetimi buna bakar.
   public Dictionary<long, long> ModUpdated { get; set; } = [];
+  /// Oyun Steam'e bağlı açılsın (sunuculara girmek ve Shift+Tab için).
+  public bool SteamMode { get; set; } = true;
+  /// Takılmaları azaltan Viewpoint ayarları.
+  public bool Smooth { get; set; } = true;
+  /// Viewpoint'in FPS göstergesi açık gelsin.
+  public bool ShowFps { get; set; }
   /// Kullanıcının mod sırası (mod id'leri; henüz inmemiş Workshop öğeleri için "ws:<numara>").
   public List<string> ModOrder { get; set; } = [];
   static readonly JsonSerializerOptions O = new() { WriteIndented = true };
@@ -82,11 +88,11 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
     Directory.CreateDirectory(l.GameDir);
     foreach (var f in new[] { "zbNative.dll", "ZombieBuddy.jar" }) File.Copy(Path.Combine(libs, f), Path.Combine(l.GameDir, f), true);
   }
-  public void WriteConfig(int memoryMb) {
+  public void WriteConfig(int memoryMb, bool steam = false) {
     var cfg = Path.Combine(l.GameDir, "ProjectZomboid64.json"); var bak = cfg + ".orijinal";
     if (!File.Exists(bak)) File.Copy(cfg, bak);
     Directory.CreateDirectory(l.ZbConfigDir);
-    File.WriteAllText(cfg, LaunchConfig.Apply(File.ReadAllText(bak), l, memoryMb));
+    File.WriteAllText(cfg, LaunchConfig.Apply(File.ReadAllText(bak), l, memoryMb, steam));
   }
   public void WriteModList(IEnumerable<ModInfo> ordered) {
     Directory.CreateDirectory(l.ModsDir);

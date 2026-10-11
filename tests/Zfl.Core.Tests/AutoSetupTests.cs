@@ -64,6 +64,24 @@ public class AutoSetupTests : IDisposable {
   }
 }
 
+public class PerfTests {
+  [Fact] public void SteamFlagFollowsSetting() {
+    var l = new InstallLayout(@"C:\Z");
+    Assert.Contains("-Dzomboid.steam=1", LaunchConfig.Apply("""{"vmArgs":[]}""", l, 4096, steam: true));
+    Assert.Contains("-Dzomboid.steam=0", LaunchConfig.Apply("""{"vmArgs":["-Dzomboid.steam=1"]}""", l, 4096));
+  }
+  [Fact] public void SmoothAndOverlay() {
+    var l = new InstallLayout(Directory.CreateTempSubdirectory("zfl").FullName);
+    Directory.CreateDirectory(l.ZomboidDir);
+    File.WriteAllText(ViewpointSetup.SettingsFile(l), "graphics.pack=default\npack.default.shadowResolution=2048\n");
+    ViewpointSetup.ApplySmooth(l); ViewpointSetup.SetFpsOverlay(l, true);
+    var f = ViewpointSetup.SettingsFile(l);
+    Assert.Equal("1024", ViewpointSetup.Get(f, "pack.default.shadowResolution"));
+    Assert.Equal("true", ViewpointSetup.Get(f, "chunks.buildOutOfView"));
+    Assert.Equal("Compact", ViewpointSetup.Get(f, "overlay.mode"));
+  }
+}
+
 public class StrayModTests {
   [Fact] public void RemovesFoldersNotInList() {
     var l = new InstallLayout(Directory.CreateTempSubdirectory("zfl").FullName);
