@@ -8,5 +8,6 @@
 
   <ItemGroup>
     <EmbeddedResource Include="../../feed.json" LogicalName="feed.json" />
+    <EmbeddedResource Include="Defaults/*" LogicalName="defaults/%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

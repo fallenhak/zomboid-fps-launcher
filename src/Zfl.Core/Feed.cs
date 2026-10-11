@@ -28,7 +28,7 @@ public sealed class LauncherState {
   /// Takılmaları azaltan Viewpoint ayarları.
   public bool Smooth { get; set; } = true;
   /// Viewpoint'in FPS göstergesi açık gelsin.
-  public bool ShowFps { get; set; }
+  public bool ShowFps { get; set; } = true;
   /// Oyun -debug ile açılsın (geliştirici menüleri).
   public bool DebugMode { get; set; }
   /// Kullanıcının mod sırası (mod id'leri; henüz inmemiş Workshop öğeleri için "ws:<numara>").

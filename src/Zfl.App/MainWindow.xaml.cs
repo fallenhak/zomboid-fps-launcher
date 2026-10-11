@@ -406,6 +406,8 @@ public partial class MainWindow : Window
     void PrepareGameSettings(InstallLayout l)
     {
         ZbApprovals.ApproveMods(l, OrderedRows(l).Where(r => r.IsBase && r.Info is { IsJava: true }).Select(r => r.Info!));
+        // yeni kurulum hazır ayarlarla gelir; oyuncunun mevcut ayar dosyalarına dokunulmaz
+        foreach (var f in GameDefaults.ApplyIfMissing(l, Loc.Lang == "tr" ? "TR" : "EN")) Log.Write($"default settings written: {f}");
         // Viewpoint 12 GB altı kartlarda doku sıkıştırma istiyor; kurulum ekranı istense de baştan açık olsun
         if (ViewpointSetup.NeedsCompression(SystemInfo.VramMiB())) ViewpointSetup.EnableCompression(l);
         if (state.ViewpointSetupWanted)

@@ -93,3 +93,21 @@ public class StrayModTests {
     Assert.False(Directory.Exists(Path.Combine(l.ModsDir, "ViewpointTileFix")));
   }
 }
+
+public class GameDefaultsTests {
+  [Fact] public void WritesOnlyMissingFilesAndSkipsSetup() {
+    var l = new InstallLayout(Directory.CreateTempSubdirectory("zfl").FullName);
+    Directory.CreateDirectory(l.ZomboidDir);
+    File.WriteAllText(ViewpointSetup.OptionsFile(l), "mine=1\n");
+    var written = GameDefaults.ApplyIfMissing(l, "EN");
+    Assert.DoesNotContain("options.ini", written);
+    Assert.Equal("mine=1\n", File.ReadAllText(ViewpointSetup.OptionsFile(l)));
+    Assert.True(ViewpointSetup.Finished(l));
+    Assert.Null(ViewpointSetup.Get(ViewpointSetup.SettingsFile(l), "packs.ViewpointTileFix"));
+  }
+  [Fact] public void OptionsHaveNoMachineSpecificLines() {
+    var t = GameDefaults.Read("options.ini");
+    foreach (var k in new[] { "width=", "height=", "fullScreen=", "voiceRecordDeviceName=", "language=" })
+      Assert.DoesNotContain("\n" + k, "\n" + t);
+  }
+}

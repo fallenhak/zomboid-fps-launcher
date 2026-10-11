@@ -88,3 +88,27 @@ public static class ViewpointSetup {
     if (File.Exists(f)) File.WriteAllLines(f, File.ReadAllLines(f).Where(x => !x.TrimStart().StartsWith("onboarding.")));
   }
 }
+
+/// Yeni kurulumun hazır ayarları (Burak'ın ayarları, launcher'a gömülü). Yalnız dosya yoksa yazılır; oyuncunun ayarı ezilmez.
+public static class GameDefaults {
+  public static readonly string[] Files = ["viewpoint-live.properties", "viewpoint-frame-caps.properties", "options.ini"];
+
+  public static string Read(string name) =>
+    new StreamReader(typeof(GameDefaults).Assembly.GetManifestResourceStream($"defaults/{name}")!).ReadToEnd();
+
+  /// Eksik ayar dosyalarını yazar; yazdıklarının adını döner.
+  public static IReadOnlyList<string> ApplyIfMissing(InstallLayout l, string gameLanguage) {
+    Directory.CreateDirectory(l.ZomboidDir);
+    var written = new List<string>();
+    foreach (var name in Files) {
+      var target = Path.Combine(l.ZomboidDir, name);
+      if (File.Exists(target)) continue;
+      var text = Read(name);
+      if (name == "viewpoint-live.properties") text += "onboarding.edition=1\nonboarding.finished=true\n";
+      if (name == "options.ini") text += $"language={gameLanguage}\n";
+      File.WriteAllText(target, text);
+      written.Add(name);
+    }
+    return written;
+  }
+}
