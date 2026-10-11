@@ -57,8 +57,9 @@ public class AutoSetupTests : IDisposable {
   }
 
   [Fact] public void LaunchConfigDropsZgc() {
-    var json = LaunchConfig.Apply("""{"vmArgs":["-XX:+UseZGC","-Xmx3072m"]}""", L, 8192);
+    // oyunun gerçek dosyası: üstte G1, Windows 10+ bölümünde ZGC; ikisi birden Java'yı açmaz
+    var json = LaunchConfig.Apply("""{"vmArgs":["-XX:+UseG1GC","-Xmx3072m"],"windows":{"6.1":{"vmArgs":["-XX:+UseG1GC"]},"10.0.17134":{"vmArgs":["-XX:+UseZGC"]}}}""", L, 8192);
     Assert.DoesNotContain("UseZGC", json);
-    Assert.Contains("-XX:+UseG1GC", json);
+    Assert.Single(System.Text.RegularExpressions.Regex.Matches(json[..json.IndexOf("windows")], "UseG1GC"));
   }
 }

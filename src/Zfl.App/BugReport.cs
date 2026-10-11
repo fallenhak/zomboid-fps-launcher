@@ -24,6 +24,8 @@ static class BugReport
         sb.AppendLine($"Other mods: {string.Join(", ", mods.Where(m => m.Id is not ("Viewpoint" or "ZombieBuddy")).Select(m => m.Name))}");
         sb.AppendLine($"console.txt: {Path.Combine(l.ZomboidDir, "console.txt")}");
         sb.AppendLine("Launcher: Zomboid FPS Launcher 0.1.0");
+        sb.AppendLine($"Launcher log ({Log.File}), last lines:");
+        foreach (var line in Log.Tail(Log.File, 30)) sb.AppendLine("  " + line);
         return sb.ToString();
     }
 }

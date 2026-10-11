@@ -75,6 +75,7 @@ public partial class MainWindow : Window
         MemorySlider.Value = state.MemoryMb / 1024.0;
         MemoryHint.Text = Loc.F("set.memHint", TotalRam / (1L << 30));
         RefreshAll();
+        await RefreshUpdateStateAsync();
     }
 
     // ---------- görünüm ----------
@@ -191,7 +192,11 @@ public partial class MainWindow : Window
 
     Brush Res(string key) => (Brush)FindResource(key);
 
-    void Status(string text) => StatusText.Text = text;
+    void Status(string text)
+    {
+        StatusText.Text = text;
+        if (text.Length > 0) Log.Write(text);
+    }
 
     void ShowProgress(string? text)
     {
@@ -232,13 +237,90 @@ public partial class MainWindow : Window
     {
         state.InstallRoot = Path.GetFullPath(InstallRootBox.Text.Trim());
         state.Save(StatePath);
-        if (await PrepareAsync()) { Status(Loc.T("setup.done")); RefreshAll(); }
+        if (await PrepareAsync()) { Status(Loc.T("setup.done")); RefreshAll(); await RefreshUpdateStateAsync(); }
+    }
+
+    /// null: denetlenmedi; true: güncelleme var; false: her şey güncel.
+    bool? updateNeeded;
+
+    /// Oyun ve modlar için güncelleme var mı; internet yoksa null.
+    async Task<bool?> CheckUpdatesAsync(InstallLayout l)
+    {
+        if (steamGame is not null && GameInfo.BuildId(steamGame) is { } build && build != state.LastBuildId)
+        {
+            Log.Write($"update: game build {state.LastBuildId} -> {build}");
+            return true;
+        }
+        if (OrderedRows(l).FirstOrDefault(r => r.Enabled && r.Info is null) is { } missing)
+        {
+            Log.Write($"update: not downloaded yet: {missing.Name}");
+            return true;
+        }
+        var ids = feed.BaseMods.Select(m => m.WorkshopId).Concat(state.UserMods).ToList();
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            var items = await WorkshopInfo.GetAsync(http, ids, cts.Token);
+            var stale = items.Where(i => i.UpdatedUnix > state.ModUpdated.GetValueOrDefault(i.Id)).ToList();
+            foreach (var i in stale) Log.Write($"update: mod {i.Title} ({i.Id}) changed on Workshop");
+            return stale.Count > 0;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("update check", ex);
+            return null;
+        }
+    }
+
+    /// Butonu durumuna göre yazar: denetleniyor / Güncelle / Oyna.
+    async Task RefreshUpdateStateAsync()
+    {
+        if (Layout is not { } l || !File.Exists(Path.Combine(l.GameDir, "ProjectZomboid64.exe"))) return;
+        PlayButton.Content = Loc.T("checking");
+        PlayButton.IsEnabled = false;
+        updateNeeded = await CheckUpdatesAsync(l);
+        if (updateNeeded is null) Status(Loc.T("s.noCheck"));
+        PlayButton.Content = Loc.T(updateNeeded == true ? "update" : "play");
+        PlayButton.IsEnabled = !busy;
     }
 
     async void OnPlay(object sender, RoutedEventArgs e)
     {
-        if (!await PrepareAsync()) return;
-        await StartGameAsync(Layout!);
+        var l = Layout!;
+        // oynamadan önce her seferinde denetle: bu arada güncelleme gelmiş olabilir
+        if (updateNeeded != true) await RefreshUpdateStateAsync();
+        if (updateNeeded == true)
+        {
+            Log.Write("updating");
+            if (await PrepareAsync()) Status(Loc.T("s.updated"));
+            await RefreshUpdateStateAsync();
+            return;
+        }
+        if (!WriteGameFiles(l)) return;
+        await StartGameAsync(l);
+    }
+
+    /// İndirme yapmadan oyuna gidecek ayarları ve mod listesini yazar.
+    bool WriteGameFiles(InstallLayout l)
+    {
+        try
+        {
+            var installer = new Installer(l, null!, new Progress<string>());
+            installer.WriteConfig(state.MemoryMb);
+            var ordered = OrderedMods(l);
+            installer.WriteModList(ordered);
+            PrepareGameSettings(l);
+            var missing = Zfl.Core.ModList.Missing(ordered);
+            if (missing.Count > 0) Status(Loc.F("s.missingReq", string.Join(", ", missing)));
+            state.Save(StatePath);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error("write game files", ex);
+            MessageBox.Show(this, ex.Message, "Zomboid FPS Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
     }
 
     Installer NewInstaller(InstallLayout l, SteamCmd steam, IProgress<string> progress) =>
@@ -266,13 +348,17 @@ public partial class MainWindow : Window
             var ids = feed.BaseMods.Select(m => m.WorkshopId).Concat(state.UserMods).ToList();
             try
             {
+                // zamanlar indirmeden önce alınır: indirme sırasında gelen güncelleme bir dahaki denetimde yakalanır
+                IReadOnlyList<WorkshopItem> times = [];
+                try { times = await WorkshopInfo.GetAsync(http, ids, default); } catch (Exception ex) { Log.Error("workshop info", ex); }
                 await installer.InstallModsAsync(ids, default);
+                foreach (var t in times) state.ModUpdated[t.Id] = t.UpdatedUnix;
             }
             catch (SteamCmdException ex) when (BaseModsPresent(l))
             {
                 // internet yoksa elindekilerle devam
                 Status(Loc.T("s.offlineStart"));
-                Debug.WriteLine(ex);
+                Log.Error("mod download", ex);
             }
 
             ShowProgress(Loc.T("pr.config"));
@@ -283,12 +369,13 @@ public partial class MainWindow : Window
             PrepareGameSettings(l);
             if (missing.Count > 0) Status(Loc.F("s.missingReq", string.Join(", ", missing)));
 
-            if (steamGame is not null) state.LastBuildId ??= GameInfo.BuildId(steamGame);
+            if (steamGame is not null) state.LastBuildId = GameInfo.BuildId(steamGame);
             state.Save(StatePath);
             return true;
         }
         catch (Exception ex)
         {
+            Log.Error("prepare", ex);
             ShowProgress(null);
             MessageBox.Show(this, ex.Message, "Zomboid FPS Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
             return false;
@@ -350,18 +437,22 @@ public partial class MainWindow : Window
         var started = DateTime.Now;
         using var p = Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = l.GameDir, UseShellExecute = false })!;
         Status(Loc.T("s.started"));
+        Log.Write($"game started: {exe}");
         WindowState = WindowState.Minimized;
         await p.WaitForExitAsync();
+        Log.Write($"game closed, exit code {p.ExitCode}, ran {(DateTime.Now - started).TotalSeconds:0} s");
         WindowState = WindowState.Normal;
         if (DateTime.Now - started < TimeSpan.FromSeconds(20))
         {
             Status(Loc.T("s.quickExit"));
+            var console = Path.Combine(l.ZomboidDir, "console.txt");
+            Log.Write(File.Exists(console) ? "console.txt tail:\n" + string.Join("\n", Log.Tail(console, 40)) : "no console.txt: the game stopped before writing one");
             MessageBox.Show(this, Loc.T("msg.quickExit"), "Zomboid FPS Launcher", MessageBoxButton.OK, MessageBoxImage.Warning);
             Tabs.SelectedItem = BugTab;
         }
         else Status("");
-        if (steamGame is not null) { state.LastBuildId = GameInfo.BuildId(steamGame); state.Save(StatePath); }
         RefreshAll();
+        await RefreshUpdateStateAsync();
     }
 
     void SetBusy(bool b)

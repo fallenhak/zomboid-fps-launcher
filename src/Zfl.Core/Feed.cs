@@ -21,6 +21,8 @@ public sealed class LauncherState {
   public string? GraphicsPreset { get; set; }
   /// Oyuncu Viewpoint ilk kurulum ekranını tekrar görmek istedi; o ekran bitene kadar launcher ayar yazmaz.
   public bool ViewpointSetupWanted { get; set; }
+  /// Kurulu Workshop öğelerinin Steam'deki güncellenme zamanı (unix); güncelleme denetimi buna bakar.
+  public Dictionary<long, long> ModUpdated { get; set; } = [];
   /// Kullanıcının mod sırası (mod id'leri; henüz inmemiş Workshop öğeleri için "ws:<numara>").
   public List<string> ModOrder { get; set; } = [];
   static readonly JsonSerializerOptions O = new() { WriteIndented = true };
