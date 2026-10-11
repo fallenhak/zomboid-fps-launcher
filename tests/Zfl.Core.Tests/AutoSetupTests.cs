@@ -76,7 +76,7 @@ public class PerfTests {
     File.WriteAllText(ViewpointSetup.SettingsFile(l), "graphics.pack=default\npack.default.shadowResolution=2048\n");
     ViewpointSetup.ApplySmooth(l); ViewpointSetup.SetFpsOverlay(l, true);
     var f = ViewpointSetup.SettingsFile(l);
-    Assert.Equal("1024", ViewpointSetup.Get(f, "pack.default.shadowResolution"));
+    Assert.Equal("2048", ViewpointSetup.Get(f, "pack.default.shadowResolution"));
     Assert.Equal("true", ViewpointSetup.Get(f, "chunks.buildOutOfView"));
     Assert.Equal("Compact", ViewpointSetup.Get(f, "overlay.mode"));
   }

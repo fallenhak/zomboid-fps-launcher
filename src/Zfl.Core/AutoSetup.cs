@@ -71,17 +71,9 @@ public static class ViewpointSetup {
     if (compression) EnableCompression(l);
   }
 
-  /// Takılmaları azaltır: bakılmayan yerler önceden hazırlanır, gölgeler bir kademe hafifler.
-  public static void ApplySmooth(InstallLayout l) {
-    var pack = Get(SettingsFile(l), "graphics.pack") ?? "vivid";
-    SetKeys(SettingsFile(l), new Dictionary<string, string> {
-      ["chunks.buildOutOfView"] = "true",
-      ["corpses.shadows"] = "false",
-      [$"pack.{pack}.shadowResolution"] = "1024",
-      [$"pack.{pack}.lampShadowResolution"] = "256",
-      [$"pack.{pack}.farShadows"] = "false",
-    });
-  }
+  /// Takılmaları azaltır: bakılmayan yerler önceden hazırlanır. Gölgeler oyuncunun kendi ayarı, dokunulmaz.
+  public static void ApplySmooth(InstallLayout l) =>
+    SetKeys(SettingsFile(l), new Dictionary<string, string> { ["chunks.buildOutOfView"] = "true" });
 
   /// Viewpoint'in performans göstergesi (oyunda ' tuşu, Türkçe klavyede i ile de değişir).
   public static void SetFpsOverlay(InstallLayout l, bool on) =>
