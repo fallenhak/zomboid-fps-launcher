@@ -42,9 +42,13 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
       if (id == 3619862853) PlaceZombieBuddy(item);
       // kopyalama arka planda: büyük paketlerde pencere donmasın
       result.AddRange(await Task.Run(() => ModInfo.FindInWorkshopItem(item).Select(m => {
+        // önce yan klasöre kopyalanır, bitince yerine konur: yarıda kalırsa eksik mod "kurulu" görünmez
         var dst = Path.Combine(l.ModsDir, Path.GetFileName(m.Dir));
+        var tmp = dst + ".kuruluyor";
+        if (Directory.Exists(tmp)) Directory.Delete(tmp, true);
+        CopyDir(m.Dir, tmp);
         if (Directory.Exists(dst)) Directory.Delete(dst, true);
-        CopyDir(m.Dir, dst);
+        Directory.Move(tmp, dst);
         return ModInfo.Read(dst)!;
       }).ToList(), ct));
     }
