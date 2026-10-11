@@ -75,15 +75,20 @@
                     </DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="{l:T mods.hint}" Foreground="{StaticResource Dim}" FontSize="12" Margin="0,-4,0,8" />
                     <TextBlock x:Name="ModMessage" DockPanel.Dock="Bottom" Foreground="{StaticResource Warn}" FontSize="12" Margin="0,6,0,0" />
-                    <DockPanel DockPanel.Dock="Bottom" Margin="0,8,0,0" LastChildFill="False">
-                        <TextBlock Text="{l:T mods.baseNote}" Foreground="{StaticResource Dim}" FontSize="12" VerticalAlignment="Center" />
-                        <Button DockPanel.Dock="Right" Content="{l:T mods.remove}" Click="OnRemoveMod" />
-                    </DockPanel>
-                    <ListBox x:Name="ModList">
+                    <TextBlock DockPanel.Dock="Bottom" Text="{l:T mods.baseNote}" Foreground="{StaticResource Dim}" FontSize="12" Margin="0,8,0,0" />
+                    <StackPanel DockPanel.Dock="Right" Margin="8,0,0,0" Width="120">
+                        <TextBlock Text="{l:T mods.orderHint}" Foreground="{StaticResource Dim}" FontSize="12" Margin="0,0,0,6" />
+                        <Button x:Name="UpButton" Content="{l:T mods.up}" Click="OnMoveUp" Margin="0,0,0,4" />
+                        <Button x:Name="DownButton" Content="{l:T mods.down}" Click="OnMoveDown" Margin="0,0,0,4" />
+                        <Button Content="{l:T mods.resetOrder}" Click="OnResetOrder" Margin="0,0,0,16" />
+                        <Button Content="{l:T mods.remove}" Click="OnRemoveMod" />
+                    </StackPanel>
+                    <ListBox x:Name="ModList" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <DockPanel>
                                     <TextBlock DockPanel.Dock="Right" Text="{Binding Note}" Foreground="{StaticResource Dim}" FontSize="12" Margin="8,0,0,0" />
+                                    <TextBlock DockPanel.Dock="Left" Text="{Binding Position}" Foreground="{StaticResource Dim}" FontSize="12" Width="22" VerticalAlignment="Center" />
                                     <CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding CanToggle}" Margin="0,0,8,0" Click="OnToggleMod" />
                                     <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
                                 </DockPanel>

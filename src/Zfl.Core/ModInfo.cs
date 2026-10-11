@@ -11,11 +11,16 @@ public sealed record ModInfo(string Id, string Name, string Dir, IReadOnlyList<s
     }
     string? One(string k) => kv.TryGetValue(k, out var l) ? l[0] : null;
     var id = One("id"); if (id is null) return null;
-    var req = kv.TryGetValue("require", out var r)
+    List<string> Ids(string k) => kv.TryGetValue(k, out var r)
       ? r.SelectMany(x => x.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Select(x => x.TrimStart('\\')).Where(x => x.Length > 0).ToList()
-      : new List<string>();
-    return new ModInfo(id, One("name") ?? id, modFolder, req, One("versionMin"), One("versionMax"), One("javaJarFile") is not null);
+      : [];
+    return new ModInfo(id, One("name") ?? id, modFolder, Ids("require"), One("versionMin"), One("versionMax"), One("javaJarFile") is not null) {
+      LoadAfter = Ids("loadModAfter"), LoadBefore = Ids("loadModBefore"), Incompatible = Ids("incompatible"),
+    };
   }
+  public IReadOnlyList<string> LoadAfter { get; init; } = [];
+  public IReadOnlyList<string> LoadBefore { get; init; } = [];
+  public IReadOnlyList<string> Incompatible { get; init; } = [];
   /// mod.info adayları: sürüm klasörleri (42, 42.20.4...) büyükten küçüğe, sonra common, sonra kök.
   public static IEnumerable<string> InfoFiles(string modFolder) {
     var versions = Directory.Exists(modFolder)

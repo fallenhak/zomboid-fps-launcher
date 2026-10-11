@@ -1,13 +1,13 @@
 using System.Text.Json;
 namespace Zfl.Core;
-public sealed record FeedMod(long WorkshopId, string Name);
+/// Locked: herkeste açık kalır, kapatılamaz (ZombieBuddy, Viewpoint).
+public sealed record FeedMod(long WorkshopId, string Name, bool Locked = false);
 public sealed record Feed(string GameVersion, IReadOnlyList<FeedMod> BaseMods, string LauncherVersion, string? LauncherUrl) {
   static readonly JsonSerializerOptions O = new() { PropertyNameCaseInsensitive = true };
   public static Feed Parse(string json) => JsonSerializer.Deserialize<Feed>(json, O) ?? throw new InvalidDataException("feed boş");
   public const string Url = "https://raw.githubusercontent.com/fallenhak/zomboid-fps-launcher/main/feed.json";
-  public static Feed Builtin { get; } = new("42.21", [
-    new(3619862853, "ZombieBuddy"), new(3809306528, "Project Viewpoint"), new(3810302175, "6244 3D models for Viewpoint"),
-    new(3813172420, "TREE in 3D"), new(3811256204, "Viewpoint QOL")], "0.1.0", null);
+  /// İnternet yokken: repodaki feed.json'un derlemeye gömülü kopyası.
+  public static Feed Builtin { get; } = Parse(new StreamReader(typeof(Feed).Assembly.GetManifestResourceStream("feed.json")!).ReadToEnd());
 }
 public sealed class LauncherState {
   public string? InstallRoot { get; set; }
@@ -17,6 +17,8 @@ public sealed class LauncherState {
   public string? LastGameVersion { get; set; }
   public string? LastBuildId { get; set; }
   public string? Language { get; set; }
+  /// Kullanıcının mod sırası (mod id'leri; henüz inmemiş Workshop öğeleri için "ws:<numara>").
+  public List<string> ModOrder { get; set; } = [];
   static readonly JsonSerializerOptions O = new() { WriteIndented = true };
   public static string DefaultPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ZomboidFpsLauncher", "state.json");
   public static LauncherState Load(string path) {

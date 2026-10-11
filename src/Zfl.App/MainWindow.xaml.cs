@@ -11,14 +11,20 @@ using Zfl.Core;
 
 namespace Zfl.App;
 
+/// Modlar listesindeki bir satır: bir mod klasörü (ya da henüz inmemiş bir Workshop öğesi).
 public sealed class ModRow
 {
+    /// Sıra anahtarı: mod id'si, inmemişse "ws:<numara>".
+    public required string Key { get; init; }
     public long WorkshopId { get; init; }
-    public required string Name { get; set; }
+    public ModInfo? Info { get; init; }
+    public required string Name { get; init; }
     public bool IsBase { get; init; }
+    public bool Locked { get; init; }
     public bool Enabled { get; set; } = true;
-    public bool CanToggle => !IsBase;
-    public string Note { get; set; } = "";
+    public bool CanToggle => !Locked;
+    public int Position { get; set; }
+    public string Note => Locked ? Loc.T("mods.required") : Info is null ? Loc.T("mods.notDownloaded") : IsBase ? Loc.T("mods.base") : Loc.T("mods.yours");
 }
 
 public partial class MainWindow : Window
@@ -136,11 +142,39 @@ public partial class MainWindow : Window
 
     void FillMods()
     {
+        var selected = (ModList.SelectedItem as ModRow)?.Key;
         mods.Clear();
-        foreach (var m in feed.BaseMods)
-            mods.Add(new ModRow { WorkshopId = m.WorkshopId, Name = m.Name, IsBase = true, Note = Loc.T("mods.base") });
-        foreach (var id in state.UserMods)
-            mods.Add(new ModRow { WorkshopId = id, Name = UserModName(id), Enabled = !state.DisabledMods.Contains(id) });
+        var rows = OrderedRows(Layout);
+        for (int i = 0; i < rows.Count; i++) { rows[i].Position = i + 1; mods.Add(rows[i]); }
+        ModList.SelectedItem = mods.FirstOrDefault(r => r.Key == selected);
+    }
+
+    /// Temel + kullanıcı modlarının satırları, varsayılan sırada.
+    List<ModRow> Rows(InstallLayout? l)
+    {
+        var rows = new List<ModRow>();
+        void Add(long id, string fallbackName, bool isBase, bool locked)
+        {
+            var infos = l is null ? [] : FolderNames(l, id).Select(f => ModInfo.Read(Path.Combine(l.ModsDir, f))).OfType<ModInfo>().ToList();
+            var enabled = locked || !state.DisabledMods.Contains(id);
+            if (infos.Count == 0)
+                rows.Add(new ModRow { Key = $"ws:{id}", WorkshopId = id, Name = fallbackName, IsBase = isBase, Locked = locked, Enabled = enabled });
+            foreach (var info in infos)
+                rows.Add(new ModRow { Key = info.Id, WorkshopId = id, Info = info, Name = infos.Count == 1 && isBase ? fallbackName : info.Name, IsBase = isBase, Locked = locked, Enabled = enabled });
+        }
+        foreach (var m in feed.BaseMods) Add(m.WorkshopId, m.Name, true, m.Locked);
+        foreach (var id in state.UserMods) Add(id, Loc.F("mods.workshop", id), false, false);
+        return rows.DistinctBy(r => r.Key, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    /// Kullanıcının sırası, modların kendi kurallarına (require, loadModAfter...) uydurulmuş hâliyle.
+    List<ModRow> OrderedRows(InstallLayout? l)
+    {
+        var rows = Rows(l);
+        var byKey = rows.ToDictionary(r => r.Key, StringComparer.OrdinalIgnoreCase);
+        var ordered = LoadOrder.Merge(rows.Select(r => r.Key).ToList(), state.ModOrder).Select(k => byKey[k]).ToList();
+        var sorted = new Queue<ModInfo>(LoadOrder.Sort(ordered.Where(r => r.Info is not null).Select(r => r.Info!).ToList()));
+        return ordered.Select(r => r.Info is null ? r : byKey[sorted.Dequeue().Id]).ToList();
     }
 
     string UserModName(long id)
@@ -275,13 +309,19 @@ public partial class MainWindow : Window
         return ModInfo.FindInWorkshopItem(steam.ItemDir(id)).Select(m => Path.GetFileName(m.Dir));
     }
 
-    /// Temel paket (feed sırası) + açık kullanıcı modları (eklenme sırası).
-    IReadOnlyList<ModInfo> OrderedMods(InstallLayout l)
+    /// Oyuna yazılacak sıra: açık ve inmiş modlar, launcher'daki sırayla.
+    IReadOnlyList<ModInfo> OrderedMods(InstallLayout l) =>
+        LoadOrder.Sort(OrderedRows(l).Where(r => r.Enabled && r.Info is not null).Select(r => r.Info!).ToList());
+
+    /// Mod listesini oyuna yazar; birlikte çalışmayan modları söyler.
+    void SaveModList()
     {
-        var ids = feed.BaseMods.Select(m => m.WorkshopId).Concat(state.UserMods.Where(id => !state.DisabledMods.Contains(id)));
-        return ids.SelectMany(id => FolderNames(l, id))
-                  .Select(f => ModInfo.Read(Path.Combine(l.ModsDir, f)))
-                  .OfType<ModInfo>().ToList();
+        state.Save(StatePath);
+        if (Layout is not { } l || !Directory.Exists(l.ModsDir)) return;
+        var ordered = OrderedMods(l);
+        new Installer(l, null!, new Progress<string>()).WriteModList(ordered);
+        if (LoadOrder.Conflicts(ordered).FirstOrDefault() is { Mod: { } m } c)
+            ModMessage.Text = Loc.F("mods.conflict", m.Name, ordered.FirstOrDefault(x => x.Id.Equals(c.Other, StringComparison.OrdinalIgnoreCase))?.Name ?? c.Other);
     }
 
     async Task StartGameAsync(InstallLayout l)
@@ -337,7 +377,7 @@ public partial class MainWindow : Window
             if (installed.Any(m => m.IsJava)) notes.Add(Loc.T("mods.java"));
             var missing = Zfl.Core.ModList.Missing(OrderedMods(l));
             if (missing.Count > 0) notes.Add(Loc.F("mods.needs", string.Join(", ", missing)));
-            new Installer(l, steam, new Progress<string>()).WriteModList(OrderedMods(l));
+            SaveModList();
             ModMessage.Text = string.Join(" ", notes);
             AddBox.Text = "";
         }
@@ -359,20 +399,45 @@ public partial class MainWindow : Window
         }
         state.UserMods.Remove(row.WorkshopId);
         state.DisabledMods.Remove(row.WorkshopId);
-        state.Save(StatePath);
-        if (Layout is { } l2) new Installer(l2, null!, new Progress<string>()).WriteModList(OrderedMods(l2));
         ModMessage.Text = Loc.F("mods.removed", row.Name);
+        SaveModList();
         RefreshAll();
     }
 
     void OnToggleMod(object sender, RoutedEventArgs e)
     {
-        if (((FrameworkElement)sender).DataContext is not ModRow row || row.IsBase) return;
+        if (((FrameworkElement)sender).DataContext is not ModRow row || row.Locked) return;
         if (row.Enabled) state.DisabledMods.Remove(row.WorkshopId);
         else if (!state.DisabledMods.Contains(row.WorkshopId)) state.DisabledMods.Add(row.WorkshopId);
-        state.Save(StatePath);
-        if (Layout is { } l) new Installer(l, null!, new Progress<string>()).WriteModList(OrderedMods(l));
         ModMessage.Text = Loc.F(row.Enabled ? "mods.on" : "mods.off", row.Name);
+        SaveModList();
+        FillMods();
+    }
+
+    void OnMoveUp(object sender, RoutedEventArgs e) => Move(-1);
+    void OnMoveDown(object sender, RoutedEventArgs e) => Move(+1);
+
+    void Move(int step)
+    {
+        if (ModList.SelectedItem is not ModRow row) { ModMessage.Text = Loc.T("mods.pick"); return; }
+        var keys = OrderedRows(Layout).Select(r => r.Key).ToList();
+        var i = keys.IndexOf(row.Key);
+        var j = i + step;
+        if (i < 0 || j < 0 || j >= keys.Count) return;
+        (keys[i], keys[j]) = (keys[j], keys[i]);
+        state.ModOrder = keys;
+        var after = OrderedRows(Layout).FindIndex(r => r.Key == row.Key);
+        ModMessage.Text = after == i ? Loc.F("mods.cantMove", row.Name) : "";
+        SaveModList();
+        FillMods();
+    }
+
+    void OnResetOrder(object sender, RoutedEventArgs e)
+    {
+        state.ModOrder.Clear();
+        ModMessage.Text = Loc.T("mods.orderReset");
+        SaveModList();
+        FillMods();
     }
 
     // ---------- ayarlar / hata ----------

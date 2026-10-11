@@ -6,4 +6,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="../../feed.json" LogicalName="feed.json" />
+  </ItemGroup>
 </Project>
