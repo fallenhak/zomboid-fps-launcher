@@ -539,5 +539,17 @@ public partial class MainWindow : Window
     void OnClose(object sender, RoutedEventArgs e) => Close();
     void OnMinimize(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
+    /// Çerçevesiz pencere küçültülüp Alt+Tab ile dönünce Windows onu bazen -32000'de bırakıyor; ekrana geri al.
+    protected override void OnActivated(EventArgs e)
+    {
+        base.OnActivated(e);
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        if (Left < SystemParameters.VirtualScreenLeft - Width / 2 || Top < SystemParameters.VirtualScreenTop - 10)
+        {
+            Left = (SystemParameters.WorkArea.Width - Width) / 2;
+            Top = (SystemParameters.WorkArea.Height - Height) / 2;
+        }
+    }
+
     internal static string? ModVersionOf(string folder) => ModVersion(folder);
 }
