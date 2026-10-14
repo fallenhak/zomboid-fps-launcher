@@ -31,8 +31,6 @@ public sealed class LauncherState {
   public bool ShowFps { get; set; } = true;
   /// Oyun -debug ile açılsın (geliştirici menüleri).
   public bool DebugMode { get; set; }
-  /// Oyun yalnız launcher'ın kurduğu modları görsün; Steam'de abone olunan modlar listede çıkmasın.
-  public bool HideWorkshop { get; set; } = true;
   /// Kullanıcının mod sırası (mod id'leri; henüz inmemiş Workshop öğeleri için "ws:<numara>").
   public List<string> ModOrder { get; set; } = [];
   static readonly JsonSerializerOptions O = new() { WriteIndented = true };

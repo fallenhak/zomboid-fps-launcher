@@ -447,7 +447,6 @@ public partial class MainWindow : Window
         SmoothBox.IsChecked = state.Smooth;
         FpsBox.IsChecked = state.ShowFps;
         DebugBox.IsChecked = state.DebugMode;
-        HideWorkshopBox.IsChecked = state.HideWorkshop;
     }
 
     void OnToggleSetting(object sender, RoutedEventArgs e)
@@ -457,7 +456,6 @@ public partial class MainWindow : Window
         state.Smooth = SmoothBox.IsChecked == true;
         state.ShowFps = FpsBox.IsChecked == true;
         state.DebugMode = DebugBox.IsChecked == true;
-        state.HideWorkshop = HideWorkshopBox.IsChecked == true;
         state.Save(StatePath);
         Status(Loc.T("s.settingSaved"));
     }
@@ -514,8 +512,7 @@ public partial class MainWindow : Window
     {
         var exe = Path.Combine(l.GameDir, "ProjectZomboid64.exe");
         var started = DateTime.Now;
-        // -modfolders mods: oyun yalnız launcher'ın mod klasörüne bakar, Steam abonelikleri listede çıkmaz
-        var args = string.Join(" ", new[] { state.DebugMode ? "-debug" : "", state.HideWorkshop ? "-modfolders mods" : "" }.Where(a => a.Length > 0));
+        var args = state.DebugMode ? "-debug" : "";
         using var p = Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = l.GameDir, UseShellExecute = false, Arguments = args })!;
         Status(Loc.T("s.started"));
         Log.Write($"game started: {exe} {args}");
