@@ -31,3 +31,11 @@ public class LoadOrderTests {
   [Fact] public void BuiltinFeedLocksZbAndViewpoint() =>
     Assert.All(Feed.Builtin.BaseMods.Take(2), m => Assert.True(m.Locked));
 }
+
+public class MoveBlockTests {
+  static readonly string[] K = ["a", "b", "c", "d", "e"];
+  [Fact] public void ShiftUpKeepsGap() => Assert.Equal(["a", "c", "b", "e", "d"], Zfl.Core.LoadOrder.Shift(K, ["c", "e"], -1));
+  [Fact] public void ShiftStopsAtTop() => Assert.Equal(K, Zfl.Core.LoadOrder.Shift(K, ["a", "c"], -1));
+  [Fact] public void MoveToDropsBlockBeforeTarget() => Assert.Equal(["a", "d", "e", "b", "c"], Zfl.Core.LoadOrder.MoveTo(K, ["d", "e"], 1));
+  [Fact] public void MoveToEnd() => Assert.Equal(["b", "c", "d", "e", "a"], Zfl.Core.LoadOrder.MoveTo(K, ["a"], 5));
+}

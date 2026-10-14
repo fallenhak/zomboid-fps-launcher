@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Microsoft.Win32;
 using Zfl.Core;
 
@@ -145,11 +146,128 @@ public partial class MainWindow : Window
 
     void FillMods()
     {
-        var selected = (ModList.SelectedItem as ModRow)?.Key;
+        var selected = ModList.SelectedItems.OfType<ModRow>().Select(r => r.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
         mods.Clear();
-        var rows = OrderedRows(Layout);
+        var rows = OrderedRows(Layout, pending: true);
         for (int i = 0; i < rows.Count; i++) { rows[i].Position = i + 1; mods.Add(rows[i]); }
-        ModList.SelectedItem = mods.FirstOrDefault(r => r.Key == selected);
+        foreach (var r in mods.Where(r => selected.Contains(r.Key))) ModList.SelectedItems.Add(r);
+        UpdateOrderButtons();
+    }
+
+    // ---------- kaydedilmemiş sıra ----------
+
+    /// Ekranda görünen ama henüz kaydedilmemiş sıra; geri al yığını boşsa kayıtlı sıra geçerli.
+    List<string> pendingOrder = [];
+    readonly Stack<List<string>> undoStack = new();
+    Storyboard? blink;
+
+    void SetPendingOrder(List<string> keys)
+    {
+        var current = OrderedRows(Layout, pending: true).Select(r => r.Key).ToList();
+        if (current.SequenceEqual(keys, StringComparer.OrdinalIgnoreCase)) return;
+        undoStack.Push(current);
+        pendingOrder = keys;
+        ModMessage.Text = Loc.T("mods.unsaved");
+        FillMods();
+    }
+
+    /// Sıra değişince Kaydet ve Geri al açılır, Kaydet yanıp söner.
+    void UpdateOrderButtons()
+    {
+        var dirty = undoStack.Count > 0;
+        SaveOrderButton.IsEnabled = UndoOrderButton.IsEnabled = dirty;
+        if (dirty && blink is null)
+        {
+            var a = new DoubleAnimation(1, 0.35, TimeSpan.FromMilliseconds(600)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever };
+            Storyboard.SetTarget(a, SaveOrderButton);
+            Storyboard.SetTargetProperty(a, new PropertyPath(OpacityProperty));
+            blink = new Storyboard { Children = { a } };
+            blink.Begin(this, true);
+        }
+        else if (!dirty && blink is not null)
+        {
+            blink.Stop(this);
+            blink = null;
+            SaveOrderButton.Opacity = 1;
+        }
+    }
+
+    void OnSaveOrder(object sender, RoutedEventArgs e)
+    {
+        if (undoStack.Count == 0) return;
+        state.ModOrder = OrderedRows(Layout, pending: true).Select(r => r.Key).ToList();
+        undoStack.Clear();
+        SaveModList();
+        ModMessage.Text = Loc.T("mods.saved");
+        Log.Write("mod order saved");
+        FillMods();
+    }
+
+    void OnUndoOrder(object sender, RoutedEventArgs e)
+    {
+        if (undoStack.Count == 0) return;
+        pendingOrder = undoStack.Pop();
+        ModMessage.Text = undoStack.Count > 0 ? Loc.T("mods.unsaved") : "";
+        FillMods();
+    }
+
+    // ---------- sürükle bırak ----------
+
+    Point dragStart;
+    ModRow? pressedRow;
+    bool deferSelect;
+
+    static T? FindParent<T>(DependencyObject? d) where T : DependencyObject
+    {
+        while (d is not null and not T) d = d is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d);
+        return d as T;
+    }
+
+    void OnModMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        dragStart = e.GetPosition(ModList);
+        var src = e.OriginalSource as DependencyObject;
+        pressedRow = FindParent<CheckBox>(src) is null ? FindParent<ListBoxItem>(src)?.DataContext as ModRow : null;
+        // seçili birden çok satırdan birine basınca seçim hemen dağılmasın, hepsi birlikte sürüklenebilsin
+        deferSelect = pressedRow is not null && ModList.SelectedItems.Contains(pressedRow) && ModList.SelectedItems.Count > 1
+            && (Keyboard.Modifiers & (ModifierKeys.Control | ModifierKeys.Shift)) == 0;
+        if (deferSelect) e.Handled = true;
+    }
+
+    void OnModMouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (deferSelect && pressedRow is not null) { ModList.SelectedItems.Clear(); ModList.SelectedItem = pressedRow; }
+        deferSelect = false; pressedRow = null;
+    }
+
+    void OnModMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton != MouseButtonState.Pressed || pressedRow is null) return;
+        var d = e.GetPosition(ModList) - dragStart;
+        if (Math.Abs(d.X) < SystemParameters.MinimumHorizontalDragDistance && Math.Abs(d.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+        if (!ModList.SelectedItems.Contains(pressedRow)) { ModList.SelectedItems.Clear(); ModList.SelectedItem = pressedRow; }
+        var keys = ModList.SelectedItems.OfType<ModRow>().Select(r => r.Key).ToList();
+        deferSelect = false; pressedRow = null;
+        DragDrop.DoDragDrop(ModList, new DataObject("zfl-mods", keys), DragDropEffects.Move);
+    }
+
+    void OnModDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent("zfl-mods") ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    void OnModDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData("zfl-mods") is not List<string> picked) return;
+        var keys = OrderedRows(Layout, pending: true).Select(r => r.Key).ToList();
+        int index = keys.Count;
+        if (FindParent<ListBoxItem>(e.OriginalSource as DependencyObject) is { DataContext: ModRow target } item)
+        {
+            index = keys.FindIndex(k => k.Equals(target.Key, StringComparison.OrdinalIgnoreCase));
+            if (e.GetPosition(item).Y > item.ActualHeight / 2) index++;
+        }
+        SetPendingOrder(LoadOrder.MoveTo(keys, picked, index));
     }
 
     /// Temel + kullanıcı modlarının satırları, varsayılan sırada.
@@ -171,11 +289,12 @@ public partial class MainWindow : Window
     }
 
     /// Kullanıcının sırası, modların kendi kurallarına (require, loadModAfter...) uydurulmuş hâliyle.
-    List<ModRow> OrderedRows(InstallLayout? l)
+    /// pending: kaydedilmemiş sırayı göster (yalnız Modlar listesi için; oyuna hep kayıtlı sıra gider).
+    List<ModRow> OrderedRows(InstallLayout? l, bool pending = false)
     {
         var rows = Rows(l);
         var byKey = rows.ToDictionary(r => r.Key, StringComparer.OrdinalIgnoreCase);
-        var ordered = LoadOrder.Merge(rows.Select(r => r.Key).ToList(), state.ModOrder).Select(k => byKey[k]).ToList();
+        var ordered = LoadOrder.Merge(rows.Select(r => r.Key).ToList(), pending && undoStack.Count > 0 ? pendingOrder : state.ModOrder).Select(k => byKey[k]).ToList();
         var sorted = new Queue<ModInfo>(LoadOrder.Sort(ordered.Where(r => r.Info is not null).Select(r => r.Info!).ToList()));
         return ordered.Select(r => r.Info is null ? r : byKey[sorted.Dequeue().Id]).ToList();
     }
@@ -576,19 +695,21 @@ public partial class MainWindow : Window
 
     void OnRemoveMod(object sender, RoutedEventArgs e)
     {
-        if (ModList.SelectedItem is not ModRow row) { ModMessage.Text = Loc.T("mods.pick"); return; }
-        if (row.IsBase) { ModMessage.Text = Loc.T("mods.baseNoRemove"); return; }
-        if (Layout is { } l)
+        var picked = ModList.SelectedItems.OfType<ModRow>().ToList();
+        if (picked.Count == 0) { ModMessage.Text = Loc.T("mods.pick"); return; }
+        if (picked.All(r => r.IsBase)) { ModMessage.Text = Loc.T("mods.baseNoRemove"); return; }
+        foreach (var row in picked.Where(r => !r.IsBase).DistinctBy(r => r.WorkshopId))
         {
-            foreach (var f in FolderNames(l, row.WorkshopId))
-            {
-                var dir = Path.Combine(l.ModsDir, f);
-                if (Directory.Exists(dir)) Directory.Delete(dir, true);
-            }
+            if (Layout is { } l)
+                foreach (var f in FolderNames(l, row.WorkshopId))
+                {
+                    var dir = Path.Combine(l.ModsDir, f);
+                    if (Directory.Exists(dir)) Directory.Delete(dir, true);
+                }
+            state.UserMods.Remove(row.WorkshopId);
+            state.DisabledMods.Remove(row.WorkshopId);
         }
-        state.UserMods.Remove(row.WorkshopId);
-        state.DisabledMods.Remove(row.WorkshopId);
-        ModMessage.Text = Loc.F("mods.removed", row.Name);
+        ModMessage.Text = Loc.F("mods.removed", string.Join(", ", picked.Where(r => !r.IsBase).Select(r => r.Name)));
         SaveModList();
         RefreshAll();
     }
@@ -608,25 +729,21 @@ public partial class MainWindow : Window
 
     void Move(int step)
     {
-        if (ModList.SelectedItem is not ModRow row) { ModMessage.Text = Loc.T("mods.pick"); return; }
-        var keys = OrderedRows(Layout).Select(r => r.Key).ToList();
-        var i = keys.IndexOf(row.Key);
-        var j = i + step;
-        if (i < 0 || j < 0 || j >= keys.Count) return;
-        (keys[i], keys[j]) = (keys[j], keys[i]);
-        state.ModOrder = keys;
-        var after = OrderedRows(Layout).FindIndex(r => r.Key == row.Key);
-        ModMessage.Text = after == i ? Loc.F("mods.cantMove", row.Name) : "";
-        SaveModList();
-        FillMods();
+        var picked = ModList.SelectedItems.OfType<ModRow>().Select(r => r.Key).ToList();
+        if (picked.Count == 0) { ModMessage.Text = Loc.T("mods.pick"); return; }
+        var keys = OrderedRows(Layout, pending: true).Select(r => r.Key).ToList();
+        var moved = LoadOrder.Shift(keys, picked, step);
+        SetPendingOrder(moved);
+        // modun kuralları (require, loadModAfter) izin vermezse yerinde kalır
+        var after = OrderedRows(Layout, pending: true).Select(r => r.Key).ToList();
+        if (!after.SequenceEqual(moved, StringComparer.OrdinalIgnoreCase) && mods.FirstOrDefault(r => picked.Contains(r.Key)) is { } row)
+            ModMessage.Text = Loc.F("mods.cantMove", row.Name);
     }
 
     void OnResetOrder(object sender, RoutedEventArgs e)
     {
-        state.ModOrder.Clear();
+        SetPendingOrder(LoadOrder.Merge(Rows(Layout).Select(r => r.Key).ToList(), []));
         ModMessage.Text = Loc.T("mods.orderReset");
-        SaveModList();
-        FillMods();
     }
 
     // ---------- ayarlar / hata ----------
@@ -737,12 +854,16 @@ public partial class MainWindow : Window
 
     void OnRemoveShader(object sender, RoutedEventArgs e)
     {
-        if (ShaderList.SelectedItem is not ShaderPacks.Pack p) return;
+        var picked = ShaderList.SelectedItems.OfType<ShaderPacks.Pack>().ToList();
+        if (picked.Count == 0) return;
         try
         {
-            ShaderPacks.Remove(p);
-            Log.Write($"shader pack removed: {p.Name}");
-            ShaderMessage.Text = Loc.F("sh.removed", p.Name);
+            foreach (var p in picked)
+            {
+                ShaderPacks.Remove(p);
+                Log.Write($"shader pack removed: {p.Name}");
+            }
+            ShaderMessage.Text = Loc.F("sh.removed", string.Join(", ", picked.Select(p => p.Name)));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

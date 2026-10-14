@@ -17,6 +17,24 @@ public static class LoadOrder {
     return result;
   }
 
+  /// Seçili modları bir adım yukarı (-1) ya da aşağı (+1) taşır; aralarındaki sıra korunur.
+  public static List<string> Shift(IReadOnlyList<string> keys, IReadOnlyCollection<string> picked, int step) {
+    var list = keys.ToList();
+    var idx = Enumerable.Range(0, list.Count).Where(i => picked.Contains(list[i], C)).ToList();
+    if (idx.Count == 0) return list;
+    if (step < 0 && idx[0] == 0 || step > 0 && idx[^1] == list.Count - 1) return list;
+    foreach (var i in step < 0 ? idx : Enumerable.Reverse(idx)) (list[i], list[i + step]) = (list[i + step], list[i]);
+    return list;
+  }
+  /// Seçili modları alıp verilen yere (taşımadan önceki listeye göre sıra numarası) yerleştirir.
+  public static List<string> MoveTo(IReadOnlyList<string> keys, IReadOnlyCollection<string> picked, int index) {
+    var moving = keys.Where(k => picked.Contains(k, C)).ToList();
+    var before = keys.Take(Math.Clamp(index, 0, keys.Count)).Count(k => picked.Contains(k, C));
+    var rest = keys.Where(k => !picked.Contains(k, C)).ToList();
+    rest.InsertRange(Math.Clamp(index - before, 0, rest.Count), moving);
+    return rest;
+  }
+
   /// Verilen sırayı olabildiğince korur, ama bir mod ihtiyaç duyduğu ya da arkasından yüklenmek istediği
   /// modlardan önce gelmez. Döngü varsa sıradakini olduğu gibi alır.
   public static List<ModInfo> Sort(IReadOnlyList<ModInfo> mods) {

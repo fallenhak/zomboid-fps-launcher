@@ -76,7 +76,8 @@
                         <Button x:Name="AddButton" DockPanel.Dock="Right" Content="{l:T mods.add}" Margin="6,0,0,0" Click="OnAddMod" />
                         <TextBox x:Name="AddBox" />
                     </DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="{l:T mods.hint}" Foreground="{StaticResource Dim}" FontSize="12" Margin="0,-4,0,8" />
+                    <TextBlock DockPanel.Dock="Top" Text="{l:T mods.hint}" Foreground="{StaticResource Dim}" FontSize="12" Margin="0,-4,0,2" />
+                    <TextBlock DockPanel.Dock="Top" Text="{l:T mods.dragHint}" Foreground="{StaticResource Dim}" FontSize="12" Margin="0,0,0,8" />
                     <TextBlock x:Name="ModMessage" DockPanel.Dock="Bottom" Foreground="{StaticResource Warn}" FontSize="12" Margin="0,6,0,0" />
                     <TextBlock DockPanel.Dock="Bottom" Text="{l:T mods.baseNote}" Foreground="{StaticResource Dim}" FontSize="12" Margin="0,8,0,0" />
                     <StackPanel DockPanel.Dock="Right" Margin="8,0,0,0" Width="120">
@@ -84,9 +85,13 @@
                         <Button x:Name="UpButton" Content="{l:T mods.up}" Click="OnMoveUp" Margin="0,0,0,4" />
                         <Button x:Name="DownButton" Content="{l:T mods.down}" Click="OnMoveDown" Margin="0,0,0,4" />
                         <Button Content="{l:T mods.resetOrder}" Click="OnResetOrder" Margin="0,0,0,16" />
-                        <Button Content="{l:T mods.remove}" Click="OnRemoveMod" />
+                        <Button Content="{l:T mods.remove}" Click="OnRemoveMod" Margin="0,0,0,16" />
+                        <Button x:Name="UndoOrderButton" Content="{l:T mods.undo}" Click="OnUndoOrder" IsEnabled="False" Margin="0,0,0,4" />
+                        <Button x:Name="SaveOrderButton" Content="{l:T mods.save}" Click="OnSaveOrder" IsEnabled="False" />
                     </StackPanel>
-                    <ListBox x:Name="ModList" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox x:Name="ModList" SelectionMode="Extended" AllowDrop="True" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             PreviewMouseLeftButtonDown="OnModMouseDown" PreviewMouseMove="OnModMouseMove" PreviewMouseLeftButtonUp="OnModMouseUp"
+                             DragOver="OnModDragOver" Drop="OnModDrop">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <DockPanel>
@@ -113,7 +118,7 @@
                         <Button Content="{l:T sh.open}" Click="OnOpenShaders" />
                     </StackPanel>
                     <Grid>
-                        <ListBox x:Name="ShaderList" DisplayMemberPath="Name" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+                        <ListBox x:Name="ShaderList" DisplayMemberPath="Name" SelectionMode="Extended" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
                         <TextBlock x:Name="ShaderEmpty" Text="{l:T sh.empty}" TextWrapping="Wrap" Foreground="{StaticResource Dim}" Margin="10" IsHitTestVisible="False" />
                     </Grid>
                 </DockPanel>
