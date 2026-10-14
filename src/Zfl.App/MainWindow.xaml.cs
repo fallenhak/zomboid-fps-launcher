@@ -281,7 +281,8 @@ public partial class MainWindow : Window
             if (infos.Count == 0)
                 rows.Add(new ModRow { Key = $"ws:{id}", WorkshopId = id, Name = fallbackName, IsBase = isBase, Locked = locked, Enabled = enabled });
             foreach (var info in infos)
-                rows.Add(new ModRow { Key = info.Id, WorkshopId = id, Info = info, Name = infos.Count == 1 && isBase ? fallbackName : info.Name, IsBase = isBase, Locked = locked, Enabled = enabled });
+                rows.Add(new ModRow { Key = info.Id, WorkshopId = id, Info = info, Name = infos.Count == 1 && isBase ? fallbackName : info.Name, IsBase = isBase, Locked = locked,
+                    Enabled = enabled && (locked || !state.DisabledModIds.Contains(info.Id, StringComparer.OrdinalIgnoreCase)) });
         }
         foreach (var m in feed.BaseMods) Add(m.WorkshopId, m.Name, true, m.Locked);
         foreach (var id in state.UserMods) Add(id, Loc.F("mods.workshop", id), false, false);
@@ -717,8 +718,19 @@ public partial class MainWindow : Window
     void OnToggleMod(object sender, RoutedEventArgs e)
     {
         if (((FrameworkElement)sender).DataContext is not ModRow row || row.Locked) return;
-        if (row.Enabled) state.DisabledMods.Remove(row.WorkshopId);
-        else if (!state.DisabledMods.Contains(row.WorkshopId)) state.DisabledMods.Add(row.WorkshopId);
+        if (row.Info is null)
+        {
+            if (row.Enabled) state.DisabledMods.Remove(row.WorkshopId);
+            else if (!state.DisabledMods.Contains(row.WorkshopId)) state.DisabledMods.Add(row.WorkshopId);
+        }
+        else
+        {
+            // öğe toptan kapalıysa: öğeyi aç, kardeş modları tek tek kapalı tut
+            if (row.Enabled && state.DisabledMods.Remove(row.WorkshopId))
+                state.DisabledModIds.AddRange(mods.Where(r => r.WorkshopId == row.WorkshopId && r != row && r.Info is not null).Select(r => r.Key));
+            state.DisabledModIds.RemoveAll(k => k.Equals(row.Key, StringComparison.OrdinalIgnoreCase));
+            if (!row.Enabled) state.DisabledModIds.Add(row.Key);
+        }
         ModMessage.Text = Loc.F(row.Enabled ? "mods.on" : "mods.off", row.Name);
         SaveModList();
         FillMods();
