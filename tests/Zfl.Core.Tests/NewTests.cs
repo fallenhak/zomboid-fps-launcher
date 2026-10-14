@@ -119,3 +119,10 @@ public class ShaderPackTests : IDisposable {
     Assert.Throws<ShaderPackException>(() => ShaderPacks.Add(L, src));
   }
 }
+
+public class SiblingTests {
+  static ModInfo M(string id, params string[] inc) => new(id, id, "", [], null, null, false) { Incompatible = inc };
+  [Fact] public void KeepsFirstOfClashingVariants() =>
+    Assert.Equal(["EQUIPMENT_UI", "patch"], ModList.SiblingsToDisable([M("EQUIPMENT_UI_B42", "EQUIPMENT_UI"), M("EQUIPMENT_UI"), M("patch", "EQUIPMENT_UI_B42")]));
+  [Fact] public void KeepsAllWhenNoClash() => Assert.Empty(ModList.SiblingsToDisable([M("a"), M("b")]));
+}

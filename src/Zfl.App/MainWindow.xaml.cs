@@ -77,7 +77,28 @@ public partial class MainWindow : Window
         MemorySlider.Value = state.MemoryMb / 1024.0;
         MemoryHint.Text = Loc.F("set.memHint", TotalRam / (1L << 30));
         RefreshAll();
+        await FetchTitlesAsync();
         await RefreshUpdateStateAsync();
+    }
+
+    /// Adı bilinmeyen Atölye öğelerinin adını Steam'den alır.
+    async Task FetchTitlesAsync()
+    {
+        var missing = state.UserMods.Where(id => !state.WorkshopTitles.ContainsKey(id)).ToList();
+        if (missing.Count == 0) return;
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            RememberTitles(await WorkshopInfo.GetAsync(http, missing, cts.Token));
+            state.Save(StatePath);
+            FillMods();
+        }
+        catch (Exception ex) { Log.Error("workshop titles", ex); }
+    }
+
+    void RememberTitles(IEnumerable<WorkshopItem> items)
+    {
+        foreach (var i in items.Where(i => i.Title.Length > 0)) state.WorkshopTitles[i.Id] = i.Title;
     }
 
     // ---------- görünüm ----------
@@ -281,11 +302,12 @@ public partial class MainWindow : Window
             if (infos.Count == 0)
                 rows.Add(new ModRow { Key = $"ws:{id}", WorkshopId = id, Name = fallbackName, IsBase = isBase, Locked = locked, Enabled = enabled });
             foreach (var info in infos)
-                rows.Add(new ModRow { Key = info.Id, WorkshopId = id, Info = info, Name = infos.Count == 1 && isBase ? fallbackName : info.Name, IsBase = isBase, Locked = locked,
+                // bir öğede birden çok mod varsa hangi öğeden geldiği görünsün
+                rows.Add(new ModRow { Key = info.Id, WorkshopId = id, Info = info, Name = infos.Count == 1 ? (isBase ? fallbackName : info.Name) : $"{fallbackName}  ›  {info.Name}", IsBase = isBase, Locked = locked,
                     Enabled = enabled && (locked || !state.DisabledModIds.Contains(info.Id, StringComparer.OrdinalIgnoreCase)) });
         }
         foreach (var m in feed.BaseMods) Add(m.WorkshopId, m.Name, true, m.Locked);
-        foreach (var id in state.UserMods) Add(id, Loc.F("mods.workshop", id), false, false);
+        foreach (var id in state.UserMods) Add(id, state.WorkshopTitles.GetValueOrDefault(id) ?? Loc.F("mods.workshop", id), false, false);
         return rows.DistinctBy(r => r.Key, StringComparer.OrdinalIgnoreCase).ToList();
     }
 
@@ -304,7 +326,7 @@ public partial class MainWindow : Window
     {
         if (Layout is { } l && FolderNames(l, id).FirstOrDefault() is { } folder)
             return ModInfo.Read(Path.Combine(l.ModsDir, folder))?.Name ?? folder;
-        return Loc.F("mods.workshop", id);
+        return state.WorkshopTitles.GetValueOrDefault(id) ?? Loc.F("mods.workshop", id);
     }
 
     /// İlerleme satırında Workshop numarası yerine modun adı.
@@ -501,7 +523,12 @@ public partial class MainWindow : Window
                     times.FirstOrDefault(t => t.Id == id) is not { } t || t.UpdatedUnix > state.ModUpdated.GetValueOrDefault(id)
                     || !FolderNames(l, id).Any(f => Installed(l, f))).ToList();
                 Log.Write($"downloading {changed.Count} of {ids.Count} mods: {string.Join(", ", changed.Select(ModName))}");
-                await installer.InstallModsAsync(changed, default);
+                var installed = await installer.InstallModsAsync(changed, default);
+                // ilk kez kurulan çok modlu öğelerde birbiriyle çalışmayan kardeşlerden yalnız ilki açık gelsin
+                foreach (var id in changed.Where(id => !state.ModUpdated.ContainsKey(id)))
+                    foreach (var off in Zfl.Core.ModList.SiblingsToDisable(FolderNames(l, id).Select(f => ModInfo.Read(Path.Combine(l.ModsDir, f))).OfType<ModInfo>().ToList()))
+                        if (!state.DisabledModIds.Contains(off, StringComparer.OrdinalIgnoreCase)) { state.DisabledModIds.Add(off); Log.Write($"turned off {off}: clashes with a mod in the same Workshop item"); }
+                RememberTitles(times);
                 foreach (var t in times) state.ModUpdated[t.Id] = t.UpdatedUnix;
                 foreach (var gone in Installer.RemoveStray(l, KeepFolders(l, ids))) Log.Write($"removed mod folder no longer in the list: {gone}");
             }
@@ -673,6 +700,7 @@ public partial class MainWindow : Window
         {
             var info = (await WorkshopInfo.GetAsync(http, [id], default)).FirstOrDefault();
             if (info is null) { ModMessage.Text = Loc.T("mods.notFound"); return; }
+            RememberTitles([info]);
             ModMessage.Text = Loc.F("mods.downloading", info.Title, info.SizeBytes / (1 << 20));
             var steam = new SteamCmd(l.ToolsDir, new ProcessRunner(), http);
             await steam.EnsureInstalledAsync(default);

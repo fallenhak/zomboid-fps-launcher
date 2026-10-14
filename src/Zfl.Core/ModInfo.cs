@@ -53,6 +53,15 @@ public sealed record ModInfo(string Id, string Name, string Dir, IReadOnlyList<s
   }
 }
 public static class ModList {
+  /// Aynı Atölye öğesindeki modlardan birbirini "incompatible" diyenlerin sonrakileri: ilk kurulumda kapalı gelir.
+  public static IReadOnlyList<string> SiblingsToDisable(IReadOnlyList<ModInfo> siblings) {
+    var on = new List<ModInfo>(); var off = new List<string>();
+    foreach (var m in siblings) {
+      var clash = on.Any(o => o.Incompatible.Contains(m.Id, StringComparer.OrdinalIgnoreCase) || m.Incompatible.Contains(o.Id, StringComparer.OrdinalIgnoreCase));
+      if (clash) off.Add(m.Id); else on.Add(m);
+    }
+    return off;
+  }
   /// Oyunun kendi yazdığı biçim: ters bölü yok, ZombieBuddy de listede; aksi halde oyun "0 mods" yükler.
   public static string DefaultTxt(IEnumerable<string> modIds) =>
     "VERSION = 1,\n\nmods\n{\n" + string.Concat(modIds.Select(id => $"    mod = {id},\n")) + "}\n\nmaps\n{\n}\n";

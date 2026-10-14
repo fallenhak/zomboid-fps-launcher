@@ -16,6 +16,8 @@ public sealed class LauncherState {
   public List<long> DisabledMods { get; set; } = [];
   /// Tek tek kapatılan modlar (mod id); bir Atölye öğesinde birden çok mod olunca yalnız biri kapatılabilsin diye.
   public List<string> DisabledModIds { get; set; } = [];
+  /// Atölye öğelerinin adları; mod henüz inmeden listede numara yerine ad görünsün diye.
+  public Dictionary<long, string> WorkshopTitles { get; set; } = [];
   public string? LastGameVersion { get; set; }
   public string? LastBuildId { get; set; }
   public string? Language { get; set; }
