@@ -49,3 +49,44 @@ public class LocTests {
   [Fact] public void UnknownSavedLanguageFallsBackToSystem() => Assert.Equal(Loc.SystemDefault(), Loc.Resolve("de"));
   [Fact] public void SavedLanguageWins() => Assert.Equal("en", Loc.Resolve("en"));
 }
+
+public class BatchDownloadTests {
+  class Runner(Func<string, string> answer) : IProcessRunner {
+    public List<string> Args = [];
+    public Task<(int, string)> RunAsync(string exe, string args, CancellationToken ct) { Args.Add(args); return Task.FromResult((0, answer(args))); }
+  }
+  [Fact] public async Task OneLoginForAllMods() {
+    var r = new Runner(_ => "Success. Downloaded item 1 to \"x\"\nSuccess. Downloaded item 2 to \"y\"");
+    var (done, _) = await new SteamCmd(Directory.CreateTempSubdirectory("zfl").FullName, r, new HttpClient()).DownloadManyAsync([1, 2], default);
+    Assert.Single(r.Args);
+    Assert.Equal("+login anonymous +workshop_download_item 108600 1 +workshop_download_item 108600 2 +quit", r.Args[0]);
+    Assert.Equal([1L, 2L], done.Order());
+  }
+  [Fact] public async Task RetriesOnlyTheOnesThatDidNotCome() {
+    var r = new Runner(a => a.Contains(" 1 ") ? "Success. Downloaded item 1 to \"x\"" : "Success. Downloaded item 2 to \"y\"");
+    var (done, _) = await new SteamCmd(Directory.CreateTempSubdirectory("zfl").FullName, r, new HttpClient()).DownloadManyAsync([1, 2], default);
+    Assert.Equal(2, r.Args.Count);
+    Assert.DoesNotContain(" 1 ", r.Args[1]);
+    Assert.Equal([1L, 2L], done.Order());
+  }
+}
+
+public class SyncDirTests : IDisposable {
+  readonly string dir = Directory.CreateTempSubdirectory("zfl").FullName;
+  public void Dispose() => Directory.Delete(dir, true);
+  [Fact] public void CopiesChangedSkipsSameDeletesGone() {
+    string src = Path.Combine(dir, "src"), dst = Path.Combine(dir, "dst");
+    Directory.CreateDirectory(Path.Combine(src, "a")); Directory.CreateDirectory(Path.Combine(dst, "old"));
+    File.WriteAllText(Path.Combine(src, "a", "same.txt"), "x"); File.WriteAllText(Path.Combine(src, "new.txt"), "yeni");
+    Installer.SyncDir(src, dst);
+    Directory.CreateDirectory(Path.Combine(dst, "old")); File.WriteAllText(Path.Combine(dst, "old", "gone.txt"), "eski");
+    var sameTime = File.GetLastWriteTimeUtc(Path.Combine(dst, "a", "same.txt"));
+    File.WriteAllText(Path.Combine(src, "new.txt"), "değişti");
+    int n = 0;
+    Installer.SyncDir(src, dst, () => Interlocked.Increment(ref n));
+    Assert.Equal(2, n);
+    Assert.Equal("değişti", File.ReadAllText(Path.Combine(dst, "new.txt")));
+    Assert.Equal(sameTime, File.GetLastWriteTimeUtc(Path.Combine(dst, "a", "same.txt")));
+    Assert.False(Directory.Exists(Path.Combine(dst, "old")));
+  }
+}

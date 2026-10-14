@@ -158,7 +158,7 @@ public partial class MainWindow : Window
         var rows = new List<ModRow>();
         void Add(long id, string fallbackName, bool isBase, bool locked)
         {
-            var infos = l is null ? [] : FolderNames(l, id).Select(f => ModInfo.Read(Path.Combine(l.ModsDir, f))).OfType<ModInfo>().ToList();
+            var infos = l is null ? [] : FolderNames(l, id).Where(f => Installed(l, f)).Select(f => ModInfo.Read(Path.Combine(l.ModsDir, f))).OfType<ModInfo>().ToList();
             var enabled = locked || !state.DisabledMods.Contains(id);
             if (infos.Count == 0)
                 rows.Add(new ModRow { Key = $"ws:{id}", WorkshopId = id, Name = fallbackName, IsBase = isBase, Locked = locked, Enabled = enabled });
@@ -203,6 +203,15 @@ public partial class MainWindow : Window
     {
         ProgressPanel.Visibility = text is null ? Visibility.Collapsed : Visibility.Visible;
         ProgressText.Text = text ?? "";
+        if (text is null) ShowPercent(null);
+    }
+
+    /// Çubuğu doldurur; null ise ne kadar süreceği belli olmayan kayan çubuk.
+    void ShowPercent(double? frac)
+    {
+        Progress.IsIndeterminate = frac is null;
+        Progress.Value = (frac ?? 0) * 100;
+        PercentText.Text = frac is { } f ? $"%{f * 100:0}" : "";
     }
 
     // ---------- kurulum / oyna ----------
@@ -331,7 +340,15 @@ public partial class MainWindow : Window
     }
 
     Installer NewInstaller(InstallLayout l, SteamCmd steam, IProgress<string> progress) =>
-        new(l, steam, progress, SteamLocator.WorkshopDirs()) { Name = ModName };
+        new(l, steam, progress, SteamLocator.WorkshopDirs())
+        {
+            Name = ModName,
+            Size = id => modSizes.GetValueOrDefault(id),
+            Percent = new Progress<double?>(ShowPercent),
+        };
+
+    /// İndirme yüzdesi için Atölye'deki boyutlar (bayt).
+    readonly Dictionary<long, long> modSizes = [];
 
     /// Oyunu eşitler, modları indirir/kurar, ayarı ve mod listesini yazar.
     async Task<bool> PrepareAsync()
@@ -358,10 +375,11 @@ public partial class MainWindow : Window
                 // zamanlar indirmeden önce alınır: indirme sırasında gelen güncelleme bir dahaki denetimde yakalanır
                 IReadOnlyList<WorkshopItem> times = [];
                 try { times = await WorkshopInfo.GetAsync(http, ids, default); } catch (Exception ex) { Log.Error("workshop info", ex); }
+                foreach (var t in times) modSizes[t.Id] = t.SizeBytes;
                 // yalnız değişen ya da eksik olanlar indirilir; Steam'e ulaşılamadıysa hepsi
                 var changed = times.Count == 0 ? ids : ids.Where(id =>
                     times.FirstOrDefault(t => t.Id == id) is not { } t || t.UpdatedUnix > state.ModUpdated.GetValueOrDefault(id)
-                    || !FolderNames(l, id).Any(f => Directory.Exists(Path.Combine(l.ModsDir, f)))).ToList();
+                    || !FolderNames(l, id).Any(f => Installed(l, f))).ToList();
                 Log.Write($"downloading {changed.Count} of {ids.Count} mods: {string.Join(", ", changed.Select(ModName))}");
                 await installer.InstallModsAsync(changed, default);
                 foreach (var t in times) state.ModUpdated[t.Id] = t.UpdatedUnix;
@@ -429,6 +447,7 @@ public partial class MainWindow : Window
         SmoothBox.IsChecked = state.Smooth;
         FpsBox.IsChecked = state.ShowFps;
         DebugBox.IsChecked = state.DebugMode;
+        HideWorkshopBox.IsChecked = state.HideWorkshop;
     }
 
     void OnToggleSetting(object sender, RoutedEventArgs e)
@@ -438,6 +457,7 @@ public partial class MainWindow : Window
         state.Smooth = SmoothBox.IsChecked == true;
         state.ShowFps = FpsBox.IsChecked == true;
         state.DebugMode = DebugBox.IsChecked == true;
+        state.HideWorkshop = HideWorkshopBox.IsChecked == true;
         state.Save(StatePath);
         Status(Loc.T("s.settingSaved"));
     }
@@ -449,7 +469,11 @@ public partial class MainWindow : Window
     }
 
     bool BaseModsPresent(InstallLayout l) =>
-        feed.BaseMods.All(m => FolderNames(l, m.WorkshopId).Any(f => Directory.Exists(Path.Combine(l.ModsDir, f))));
+        feed.BaseMods.All(m => FolderNames(l, m.WorkshopId).Any(f => Installed(l, f)));
+
+    /// Klasör var ve kopyalaması yarıda kalmamış.
+    static bool Installed(InstallLayout l, string folder) =>
+        Directory.Exists(Path.Combine(l.ModsDir, folder)) && !File.Exists(Installer.Unfinished(l, folder));
 
     /// Listedeki modların klasörleri. Biri bile çözülemezse hepsi tutulur (yanlışlıkla silmemek için).
     static List<string> KeepFolders(InstallLayout l, IEnumerable<long> ids)
@@ -490,9 +514,11 @@ public partial class MainWindow : Window
     {
         var exe = Path.Combine(l.GameDir, "ProjectZomboid64.exe");
         var started = DateTime.Now;
-        using var p = Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = l.GameDir, UseShellExecute = false, Arguments = state.DebugMode ? "-debug" : "" })!;
+        // -modfolders mods: oyun yalnız launcher'ın mod klasörüne bakar, Steam abonelikleri listede çıkmaz
+        var args = string.Join(" ", new[] { state.DebugMode ? "-debug" : "", state.HideWorkshop ? "-modfolders mods" : "" }.Where(a => a.Length > 0));
+        using var p = Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = l.GameDir, UseShellExecute = false, Arguments = args })!;
         Status(Loc.T("s.started"));
-        Log.Write($"game started: {exe}{(state.DebugMode ? " -debug" : "")}");
+        Log.Write($"game started: {exe} {args}");
         WindowState = WindowState.Minimized;
         await p.WaitForExitAsync();
         Log.Write($"game closed, exit code {p.ExitCode}, ran {(DateTime.Now - started).TotalSeconds:0} s");

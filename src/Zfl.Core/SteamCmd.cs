@@ -24,14 +24,25 @@ public sealed class SteamCmd(string toolsDir, IProcessRunner run, HttpClient htt
     ZipFile.ExtractToDirectory(zip, Home, true);
     await run.RunAsync(Exe, "+quit", ct); // ilk çalıştırma kendini günceller
   }
+  /// SteamCMD'nin indirirken dosyaları biriktirdiği yer; bitince ItemDir'e taşınır.
+  public string StagingDir(long id) => Path.Combine(Home, "steamapps", "workshop", "downloads", AppId.ToString(), id.ToString());
   public async Task<string> DownloadAsync(long itemId, CancellationToken ct) {
-    var args = $"+login anonymous +workshop_download_item {AppId} {itemId} +quit";
-    string output = "";
-    for (int attempt = 0; attempt < 2; attempt++) {
-      (_, output) = await run.RunAsync(Exe, args, ct);
-      if (output.Contains($"Success. Downloaded item {itemId}")) return ItemDir(itemId);
-      if (output.Contains("ERROR")) break;
-    }
+    var (done, output) = await DownloadManyAsync([itemId], ct);
+    if (done.Contains(itemId)) return ItemDir(itemId);
     throw new SteamCmdException(Loc.F("err.download", itemId) + $"\n{output.Split('\n').LastOrDefault(l => l.Trim().Length > 0)}");
+  }
+  /// Hepsini tek oturumda indirir: her mod için ayrı giriş yapmak mod başına ~6 saniye kaybettiriyordu.
+  /// İnmeyenler bir kez daha denenir (ilk çalıştırmada SteamCMD kendini güncelleyip çıkabiliyor).
+  public async Task<(IReadOnlySet<long> Done, string Output)> DownloadManyAsync(IReadOnlyList<long> ids, CancellationToken ct) {
+    var done = new HashSet<long>(); string output = "";
+    for (int attempt = 0; attempt < 2; attempt++) {
+      var left = ids.Where(id => !done.Contains(id)).ToList();
+      if (left.Count == 0) break;
+      var args = "+login anonymous " + string.Join(" ", left.Select(id => $"+workshop_download_item {AppId} {id}")) + " +quit";
+      (_, output) = await run.RunAsync(Exe, args, ct);
+      foreach (var id in left) if (output.Contains($"Success. Downloaded item {id}")) done.Add(id);
+      if (left.All(id => output.Contains($"Download item {id} failed"))) break;
+    }
+    return (done, output);
   }
 }

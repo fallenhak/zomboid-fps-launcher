@@ -31,6 +31,8 @@ public sealed class LauncherState {
   public bool ShowFps { get; set; } = true;
   /// Oyun -debug ile açılsın (geliştirici menüleri).
   public bool DebugMode { get; set; }
+  /// Oyun yalnız launcher'ın kurduğu modları görsün; Steam'de abone olunan modlar listede çıkmasın.
+  public bool HideWorkshop { get; set; } = true;
   /// Kullanıcının mod sırası (mod id'leri; henüz inmemiş Workshop öğeleri için "ws:<numara>").
   public List<string> ModOrder { get; set; } = [];
   static readonly JsonSerializerOptions O = new() { WriteIndented = true };
@@ -42,37 +44,73 @@ public sealed class LauncherState {
 }
 public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string> p, IEnumerable<string>? fallbackDirs = null) {
   public Func<long, string> Name { get; init; } = id => id.ToString();
+  /// İndirilecek boyut (bayt); yüzde bundan hesaplanır. Bilinmiyorsa 0.
+  public Func<long, long> Size { get; init; } = _ => 0;
+  /// 0–1 arası ilerleme; null = ne kadar süreceği belli değil.
+  public IProgress<double?>? Percent { get; init; }
   public async Task<IReadOnlyList<ModInfo>> InstallModsAsync(IEnumerable<long> ids, CancellationToken ct) {
+    var list = ids.ToList();
+    var items = await DownloadAllAsync(list, ct);
     var result = new List<ModInfo>();
-    foreach (var id in ids) {
-      p.Report(Loc.F("pr.download", Name(id)));
-      var item = await DownloadOrFallbackAsync(id, ct);
+    foreach (var id in list) {
+      var item = items[id];
       if (id == 3619862853) PlaceZombieBuddy(item);
+      var mods = ModInfo.FindInWorkshopItem(item);
+      var files = mods.Sum(m => Directory.EnumerateFiles(m.Dir, "*", SearchOption.AllDirectories).Count());
+      int copied = 0;
+      p.Report(Loc.F("pr.install", Name(id)));
       // kopyalama arka planda: büyük paketlerde pencere donmasın
-      result.AddRange(await Task.Run(() => ModInfo.FindInWorkshopItem(item).Select(m => {
-        // önce yan klasöre kopyalanır, bitince yerine konur: yarıda kalırsa eksik mod "kurulu" görünmez
+      result.AddRange(await Task.Run(() => mods.Select(m => {
         var dst = Path.Combine(l.ModsDir, Path.GetFileName(m.Dir));
-        var tmp = dst + ".kuruluyor";
-        if (Directory.Exists(tmp)) Directory.Delete(tmp, true);
-        CopyDir(m.Dir, tmp);
-        if (Directory.Exists(dst)) Directory.Delete(dst, true);
-        Directory.Move(tmp, dst);
+        // yarıda kalırsa işaret dosyası kalır, mod "kurulu" sayılmaz
+        var mark = Unfinished(l, Path.GetFileName(m.Dir));
+        Directory.CreateDirectory(l.ModsDir); File.WriteAllText(mark, "");
+        SyncDir(m.Dir, dst, () => Percent?.Report(files == 0 ? null : (double)Interlocked.Increment(ref copied) / files));
+        File.Delete(mark);
         return ModInfo.Read(dst)!;
       }).ToList(), ct));
     }
     return result;
   }
-  /// Atölye'den iner; inmezse (internet yok ya da mod Atölye'den kalkmış) eldeki kopyayı kullanır:
-  /// önce SteamCMD'nin önceki indirmesi, sonra verilen klasörler (Steam'in kendi Atölye klasörü gibi).
-  async Task<string> DownloadOrFallbackAsync(long id, CancellationToken ct) {
-    try { return await steam.DownloadAsync(id, ct); }
-    catch (SteamCmdException) {
-      var local = new[] { steam.ItemDir(id) }.Concat((fallbackDirs ?? []).Select(d => Path.Combine(d, id.ToString())))
-        .FirstOrDefault(d => ModInfo.FindInWorkshopItem(d).Count > 0);
-      if (local is null) throw;
-      return local;
+  public static string Unfinished(InstallLayout l, string folder) => Path.Combine(l.ModsDir, folder + ".kuruluyor");
+  /// Hepsi tek SteamCMD oturumunda iner; bu arada indirme klasörünün dolmasına bakıp yüzde gösterilir.
+  async Task<Dictionary<long, string>> DownloadAllAsync(List<long> ids, CancellationToken ct) {
+    var result = new Dictionary<long, string>();
+    if (ids.Count == 0) return result;
+    p.Report(ids.Count == 1 ? Loc.F("pr.download", Name(ids[0])) : Loc.F("pr.downloadMany", ids.Count));
+    long total = ids.Sum(Size);
+    var start = DateTime.Now;
+    var run = steam.DownloadManyAsync(ids, ct);
+    var seen = new HashSet<long>(); var finished = new HashSet<long>();
+    while (await Task.WhenAny(run, Task.Delay(500, ct)) != run) {
+      if (total <= 0) { Percent?.Report(null); continue; }
+      long got = 0;
+      foreach (var id in ids) {
+        var st = steam.StagingDir(id);
+        if (Directory.Exists(st)) { seen.Add(id); got += DirSize(st); }
+        else if (seen.Contains(id)) { finished.Add(id); got += Size(id); }
+      }
+      var frac = Math.Min(1, (double)got / total);
+      Percent?.Report(frac);
+      var secs = (DateTime.Now - start).TotalSeconds;
+      p.Report(Loc.F("pr.downloadMb", got / 1048576, total / 1048576, secs > 1 ? got / 1048576.0 / secs : 0));
     }
+    var (done, output) = await run;
+    foreach (var id in ids) {
+      if (done.Contains(id)) { result[id] = steam.ItemDir(id); continue; }
+      result[id] = LocalCopy(id) ?? throw new SteamCmdException(Loc.F("err.download", Name(id)) + $"\n{output.Split('\n').LastOrDefault(x => x.Trim().Length > 0)}");
+    }
+    return result;
   }
+  static long DirSize(string d) {
+    try { return Directory.EnumerateFiles(d, "*", SearchOption.AllDirectories).Sum(f => { try { return new FileInfo(f).Length; } catch { return 0L; } }); }
+    catch { return 0; }
+  }
+  /// Atölye'den inmezse (internet yok ya da mod Atölye'den kalkmış) eldeki kopya:
+  /// önce SteamCMD'nin önceki indirmesi, sonra verilen klasörler (Steam'in kendi Atölye klasörü gibi).
+  string? LocalCopy(long id) =>
+    new[] { steam.ItemDir(id) }.Concat((fallbackDirs ?? []).Select(d => Path.Combine(d, id.ToString())))
+      .FirstOrDefault(d => ModInfo.FindInWorkshopItem(d).Count > 0);
   /// Mod klasörü launcher'ındır: listede olmayan klasörler (temel listeden çıkan modlar gibi) silinir.
   public static IReadOnlyList<string> Stray(InstallLayout l, IEnumerable<string> keepFolders) {
     if (!Directory.Exists(l.ModsDir)) return [];
@@ -108,9 +146,27 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
     Directory.CreateDirectory(l.ModsDir);
     File.WriteAllText(Path.Combine(l.ModsDir, "default.txt"), ModList.DefaultTxt(ordered.Select(m => m.Id)));
   }
-  static void CopyDir(string src, string dst) {
-    foreach (var f in Directory.EnumerateFiles(src, "*", SearchOption.AllDirectories)) {
-      var t = Path.Combine(dst, Path.GetRelativePath(src, f)); Directory.CreateDirectory(Path.GetDirectoryName(t)!); File.Copy(f, t, true);
-    }
+  /// Yalnız değişen dosyaları kopyalar (boyut ya da tarih farklı), kaynakta olmayanları siler.
+  /// 3D modeller gibi 37 bin dosyalı paketlerde baştan kopyalamak dakikalar sürüyordu.
+  public static void SyncDir(string src, string dst, Action? onFile = null) {
+    var want = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    Parallel.ForEach(Directory.EnumerateFiles(src, "*", SearchOption.AllDirectories).ToList(), new ParallelOptions { MaxDegreeOfParallelism = 8 }, f => {
+      var rel = Path.GetRelativePath(src, f);
+      lock (want) want.Add(rel);
+      var t = Path.Combine(dst, rel);
+      var fi = new FileInfo(f); var ti = new FileInfo(t);
+      if (!ti.Exists || ti.Length != fi.Length || ti.LastWriteTimeUtc != fi.LastWriteTimeUtc) {
+        Directory.CreateDirectory(ti.DirectoryName!);
+        File.Copy(f, t, true);
+        File.SetLastWriteTimeUtc(t, fi.LastWriteTimeUtc);
+      }
+      onFile?.Invoke();
+    });
+    if (!Directory.Exists(dst)) return;
+    foreach (var t in Directory.EnumerateFiles(dst, "*", SearchOption.AllDirectories).ToList())
+      if (!want.Contains(Path.GetRelativePath(dst, t))) File.Delete(t);
+    foreach (var d in Directory.EnumerateDirectories(dst, "*", SearchOption.AllDirectories).OrderByDescending(d => d.Length).ToList())
+      if (!Directory.EnumerateFileSystemEntries(d).Any()) Directory.Delete(d);
   }
+
 }
