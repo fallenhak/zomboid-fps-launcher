@@ -724,6 +724,17 @@ public partial class MainWindow : Window
         if (d.ShowDialog(this) == true) AddShader(d.FolderName);
     }
 
+    void OnShaderDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(DataFormats.FileDrop) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    void OnShaderDrop(object sender, DragEventArgs e)
+    {
+        if (e.Data.GetData(DataFormats.FileDrop) is string[] paths) foreach (var f in paths) AddShader(f);
+    }
+
     void OnRemoveShader(object sender, RoutedEventArgs e)
     {
         if (ShaderList.SelectedItem is not ShaderPacks.Pack p) return;
