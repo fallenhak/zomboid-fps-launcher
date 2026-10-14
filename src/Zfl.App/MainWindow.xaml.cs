@@ -684,6 +684,70 @@ public partial class MainWindow : Window
         Status(Loc.T("s.vpSetupAgain"));
     }
 
+    // ---------- shaderlar ----------
+
+    void OnShadersTab(object sender, RoutedEventArgs e) => RefreshShaders();
+
+    void RefreshShaders()
+    {
+        var packs = Layout is { } l ? ShaderPacks.List(l) : [];
+        ShaderList.ItemsSource = packs;
+        ShaderEmpty.Visibility = packs.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    void AddShader(string source)
+    {
+        if (Layout is not { } l || !Directory.Exists(l.ZomboidDir)) { ShaderMessage.Text = Loc.T("sh.noInstall"); return; }
+        try
+        {
+            var name = ShaderPacks.Add(l, source);
+            Log.Write($"shader pack added: {name} from {source}");
+            ShaderMessage.Text = Loc.F("sh.added", name);
+        }
+        catch (Exception ex) when (ex is ShaderPackException or IOException or UnauthorizedAccessException)
+        {
+            Log.Error("add shader pack", ex);
+            ShaderMessage.Text = ex.Message;
+        }
+        RefreshShaders();
+    }
+
+    void OnAddShaderZip(object sender, RoutedEventArgs e)
+    {
+        var d = new OpenFileDialog { Filter = "Zip (*.zip)|*.zip", Multiselect = true };
+        if (d.ShowDialog(this) == true) foreach (var f in d.FileNames) AddShader(f);
+    }
+
+    void OnAddShaderFolder(object sender, RoutedEventArgs e)
+    {
+        var d = new OpenFolderDialog();
+        if (d.ShowDialog(this) == true) AddShader(d.FolderName);
+    }
+
+    void OnRemoveShader(object sender, RoutedEventArgs e)
+    {
+        if (ShaderList.SelectedItem is not ShaderPacks.Pack p) return;
+        try
+        {
+            ShaderPacks.Remove(p);
+            Log.Write($"shader pack removed: {p.Name}");
+            ShaderMessage.Text = Loc.F("sh.removed", p.Name);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Log.Error("remove shader pack", ex);
+            ShaderMessage.Text = ex.Message;
+        }
+        RefreshShaders();
+    }
+
+    void OnOpenShaders(object sender, RoutedEventArgs e)
+    {
+        if (Layout is not { } l || !Directory.Exists(l.ZomboidDir)) { ShaderMessage.Text = Loc.T("sh.noInstall"); return; }
+        Directory.CreateDirectory(ShaderPacks.Dir(l));
+        OpenFolder(ShaderPacks.Dir(l));
+    }
+
     void OnOpenInstall(object sender, RoutedEventArgs e) { if (Layout is { } l) OpenFolder(l.Root); }
     void OnOpenLogs(object sender, RoutedEventArgs e) { if (Layout is { } l) OpenFolder(l.ZomboidDir); }
     static void OpenFolder(string dir) { if (Directory.Exists(dir)) Process.Start("explorer.exe", $"\"{dir}\""); }

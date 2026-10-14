@@ -101,6 +101,24 @@
                 </DockPanel>
             </TabItem>
 
+            <!-- SHADERLAR -->
+            <TabItem Header="{l:T tab.shaders}" GotFocus="OnShadersTab">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="{l:T sh.hint}" Foreground="{StaticResource Dim}" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,8" />
+                    <TextBlock x:Name="ShaderMessage" DockPanel.Dock="Bottom" Foreground="{StaticResource Warn}" FontSize="12" Margin="0,6,0,0" TextWrapping="Wrap" />
+                    <StackPanel DockPanel.Dock="Right" Margin="8,0,0,0" Width="120">
+                        <Button Content="{l:T sh.addZip}" Click="OnAddShaderZip" Margin="0,0,0,4" />
+                        <Button Content="{l:T sh.addFolder}" Click="OnAddShaderFolder" Margin="0,0,0,16" />
+                        <Button Content="{l:T sh.remove}" Click="OnRemoveShader" Margin="0,0,0,4" />
+                        <Button Content="{l:T sh.open}" Click="OnOpenShaders" />
+                    </StackPanel>
+                    <Grid>
+                        <ListBox x:Name="ShaderList" DisplayMemberPath="Name" ScrollViewer.HorizontalScrollBarVisibility="Disabled" />
+                        <TextBlock x:Name="ShaderEmpty" Text="{l:T sh.empty}" Foreground="{StaticResource Dim}" Margin="10" IsHitTestVisible="False" />
+                    </Grid>
+                </DockPanel>
+            </TabItem>
+
             <!-- AYARLAR -->
             <TabItem Header="{l:T tab.settings}">
                 <Grid>

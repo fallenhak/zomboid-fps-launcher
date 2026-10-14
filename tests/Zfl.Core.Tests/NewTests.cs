@@ -90,3 +90,32 @@ public class SyncDirTests : IDisposable {
     Assert.False(Directory.Exists(Path.Combine(dst, "old")));
   }
 }
+
+public class ShaderPackTests : IDisposable {
+  readonly string dir = Directory.CreateTempSubdirectory("zfl").FullName;
+  public void Dispose() => Directory.Delete(dir, true);
+  InstallLayout L => new(Path.Combine(dir, "kurulum"));
+  string Zip(string name, string entry) {
+    var z = Path.Combine(dir, name);
+    using var a = System.IO.Compression.ZipFile.Open(z, System.IO.Compression.ZipArchiveMode.Create);
+    a.CreateEntry(entry);
+    return z;
+  }
+  [Fact] public void AddsMinecraftZipAndLists() {
+    Assert.Equal("BSL v8", ShaderPacks.Add(L, Zip("BSL v8.zip", "shaders/final.fsh")));
+    var p = Assert.Single(ShaderPacks.List(L));
+    Assert.True(p.IsZip);
+    ShaderPacks.Remove(p);
+    Assert.Empty(ShaderPacks.List(L));
+  }
+  [Fact] public void RejectsZipThatIsNotAPack() =>
+    Assert.Throws<ShaderPackException>(() => ShaderPacks.Add(L, Zip("foto.zip", "resim.png")));
+  [Fact] public void ViewpointFolderGetsSafeName() {
+    var src = Path.Combine(dir, "Güzel Paket!");
+    Directory.CreateDirectory(src); File.WriteAllText(Path.Combine(src, "pack.properties"), "x");
+    var name = ShaderPacks.Add(L, src);
+    Assert.Matches("^[A-Za-z0-9_-]+$", name);
+    Assert.True(File.Exists(Path.Combine(ShaderPacks.Dir(L), name, "pack.properties")));
+    Assert.Throws<ShaderPackException>(() => ShaderPacks.Add(L, src));
+  }
+}
