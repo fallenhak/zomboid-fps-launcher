@@ -83,19 +83,22 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
     long total = ids.Sum(Size);
     var start = DateTime.Now;
     var run = steam.DownloadManyAsync(ids, ct);
-    var seen = new HashSet<long>(); var finished = new HashSet<long>();
+    // güncel modlar hiç inmez, yalnız denetlenir: bitenler SteamCMD'nin kaydından okunur
+    var log = new LogTail(steam.WorkshopLog);
+    var finished = new HashSet<long>(); var want = ids.ToHashSet();
+    long fetched = 0;
     while (await Task.WhenAny(run, Task.Delay(500, ct)) != run) {
-      if (total <= 0) { Percent?.Report(null); continue; }
-      long got = 0;
-      foreach (var id in ids) {
+      foreach (var id in log.FinishedItems()) if (want.Contains(id)) finished.Add(id);
+      long staging = 0;
+      foreach (var id in ids.Where(i => !finished.Contains(i))) {
         var st = steam.StagingDir(id);
-        if (Directory.Exists(st)) { seen.Add(id); got += DirSize(st); }
-        else if (seen.Contains(id)) { finished.Add(id); got += Size(id); }
+        if (Directory.Exists(st)) staging += DirSize(st);
       }
-      var frac = Math.Min(1, (double)got / total);
-      Percent?.Report(frac);
+      fetched = Math.Max(fetched, staging);
+      long got = staging + finished.Sum(Size);
+      Percent?.Report(total > 0 ? Math.Min(1, (double)got / total) : (double)finished.Count / ids.Count);
       var secs = (DateTime.Now - start).TotalSeconds;
-      p.Report(Loc.F("pr.downloadMb", got / 1048576, total / 1048576, secs > 1 ? got / 1048576.0 / secs : 0));
+      p.Report(Loc.F("pr.downloadMb", finished.Count, ids.Count, got / 1048576, total / 1048576, secs > 1 ? staging / 1048576.0 / Math.Max(1, secs) : 0));
     }
     var (done, output) = await run;
     foreach (var id in ids) {
@@ -103,6 +106,21 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
       result[id] = LocalCopy(id) ?? throw new SteamCmdException(Loc.F("err.download", Name(id)) + $"\n{output.Split('\n').LastOrDefault(x => x.Trim().Length > 0)}");
     }
     return result;
+  }
+  /// Bir dosyanın sonradan eklenen satırlarını okur.
+  sealed class LogTail(string path) {
+    long pos = File.Exists(path) ? new FileInfo(path).Length : 0;
+    public IEnumerable<long> FinishedItems() {
+      if (!File.Exists(path)) return [];
+      try {
+        using var f = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        if (f.Length < pos) pos = 0;
+        f.Seek(pos, SeekOrigin.Begin);
+        var text = new StreamReader(f).ReadToEnd();
+        pos = f.Length;
+        return System.Text.RegularExpressions.Regex.Matches(text, @"Download item (\d+) result : OK").Select(m => long.Parse(m.Groups[1].Value)).ToList();
+      } catch (IOException) { return []; }
+    }
   }
   static long DirSize(string d) {
     try { return Directory.EnumerateFiles(d, "*", SearchOption.AllDirectories).Sum(f => { try { return new FileInfo(f).Length; } catch { return 0L; } }); }

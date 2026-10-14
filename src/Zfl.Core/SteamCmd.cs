@@ -25,6 +25,8 @@ public sealed class SteamCmd(string toolsDir, IProcessRunner run, HttpClient htt
     await run.RunAsync(Exe, "+quit", ct); // ilk çalıştırma kendini günceller
   }
   /// SteamCMD'nin indirirken dosyaları biriktirdiği yer; bitince ItemDir'e taşınır.
+  /// SteamCMD her öğe bitince buraya "Download item <id> result : OK" yazar; çıktısı ise ancak sonunda geliyor.
+  public string WorkshopLog => Path.Combine(Home, "logs", "workshop_log.txt");
   public string StagingDir(long id) => Path.Combine(Home, "steamapps", "workshop", "downloads", AppId.ToString(), id.ToString());
   public async Task<string> DownloadAsync(long itemId, CancellationToken ct) {
     var (done, output) = await DownloadManyAsync([itemId], ct);
