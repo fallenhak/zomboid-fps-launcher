@@ -168,7 +168,6 @@
                         <CheckBox x:Name="SmoothBox" Content="{l:T set.smooth}" Margin="0,2" Click="OnToggleSetting" />
                         <CheckBox x:Name="FpsBox" Content="{l:T set.fps}" Margin="0,2" Click="OnToggleSetting" />
                         <CheckBox x:Name="DebugBox" Content="{l:T set.debug}" Margin="0,2" Click="OnToggleSetting" />
-                        <CheckBox x:Name="PzOptBox" Content="{l:T set.pzopt}" ToolTip="{l:T set.pzoptTip}" Margin="0,2" Click="OnToggleSetting" />
                     </StackPanel>
                     <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" Margin="0,12,0,0">
                         <Button Content="{l:T set.openFolder}" Click="OnOpenInstall" />

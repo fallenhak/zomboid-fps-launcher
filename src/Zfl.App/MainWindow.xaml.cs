@@ -457,7 +457,6 @@ public partial class MainWindow : Window
             return;
         }
         if (!WriteGameFiles(l)) return;
-        await EnsurePzOptAsync(l, false);
         await StartGameAsync(l);
     }
 
@@ -504,13 +503,11 @@ public partial class MainWindow : Window
         var progress = new Progress<string>(s => ShowProgress(s));
         try
         {
-            var gameChanged = false;
             if (steamGame is not null)
             {
                 ShowProgress(Loc.T("pr.compare"));
                 var n = await GameMirror.SyncAsync(steamGame, l.GameDir, new Progress<string>(f => ShowProgress(Loc.F("pr.copy", f))), default);
                 if (n > 0) Status(Loc.F("s.filesUpdated", n));
-                gameChanged = n > 0;
             }
             var steam = new SteamCmd(l.ToolsDir, new ProcessRunner(), http);
             ShowProgress(Loc.T("pr.steamcmd"));
@@ -552,7 +549,6 @@ public partial class MainWindow : Window
             installer.WriteModList(ordered);
             installer.SyncZombieBuddy();
             PrepareGameSettings(l);
-            await EnsurePzOptAsync(l, gameChanged);
             if (missing.Count > 0) Status(Loc.F("s.missingReq", string.Join(", ", missing)));
 
             if (steamGame is not null) state.LastBuildId = GameInfo.BuildId(steamGame);
@@ -593,38 +589,6 @@ public partial class MainWindow : Window
         ViewpointSetup.SetFpsOverlay(l, state.ShowFps);
     }
 
-    /// PZ_Optimization'ı ayara göre kurar ya da kaldırır; oyun dosyaları değiştiyse yeni oyun sürümüne göre yeniden kurar.
-    /// Olmazsa oyun yine açılır, yalnız durum satırında söylenir.
-    async Task EnsurePzOptAsync(InstallLayout l, bool gameChanged)
-    {
-        var pz = new PzOptimization(l.GameDir, l.ToolsDir, new ProcessRunner(), http);
-        try
-        {
-            string? err;
-            if (state.PzOptimization) PzOptimization.PreferCompatibility(l.ZomboidDir);
-            if (state.PzOptimization && (!pz.Installed || gameChanged))
-            {
-                ShowProgress(Loc.T("pr.pzopt"));
-                err = await pz.InstallAsync(default);
-                Log.Write($"pzopt install: {err ?? "ok, revision " + pz.InstalledRevision}");
-            }
-            else if (!state.PzOptimization && pz.Installed)
-            {
-                ShowProgress(Loc.T("pr.pzoptRemove"));
-                err = await pz.UninstallAsync(default);
-                Log.Write($"pzopt uninstall: {err ?? "ok"}");
-            }
-            else return;
-            if (err is not null) Status(Loc.F("s.pzoptFail", err));
-        }
-        catch (Exception ex)
-        {
-            Log.Error("pzopt", ex);
-            Status(Loc.F("s.pzoptFail", ex.Message));
-        }
-        finally { ShowProgress(null); }
-    }
-
     /// Steam açıksa oyun Steam'e bağlı açılır; kapalıysa Steam'siz (yine de oynanır, sunucular hariç).
     bool UseSteam => state.SteamMode && Process.GetProcessesByName("steam").Length > 0;
 
@@ -634,7 +598,6 @@ public partial class MainWindow : Window
         SmoothBox.IsChecked = state.Smooth;
         FpsBox.IsChecked = state.ShowFps;
         DebugBox.IsChecked = state.DebugMode;
-        PzOptBox.IsChecked = state.PzOptimization;
     }
 
     void OnToggleSetting(object sender, RoutedEventArgs e)
@@ -644,7 +607,6 @@ public partial class MainWindow : Window
         state.Smooth = SmoothBox.IsChecked == true;
         state.ShowFps = FpsBox.IsChecked == true;
         state.DebugMode = DebugBox.IsChecked == true;
-        state.PzOptimization = PzOptBox.IsChecked == true;
         state.Save(StatePath);
         Status(Loc.T("s.settingSaved"));
     }
