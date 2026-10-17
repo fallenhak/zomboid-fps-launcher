@@ -2,7 +2,9 @@ using System.Text.Json;
 namespace Zfl.Core;
 /// Locked: herkeste açık kalır, kapatılamaz (ZombieBuddy, Viewpoint).
 public sealed record FeedMod(long WorkshopId, string Name, bool Locked = false);
-public sealed record Feed(string GameVersion, IReadOnlyList<FeedMod> BaseMods, string LauncherVersion, string? LauncherUrl) {
+/// ModOrder / DisabledModIds: herkesin başlangıç mod sırası ve kapalı modları (kendi sırasını kaydedene kadar).
+public sealed record Feed(string GameVersion, IReadOnlyList<FeedMod> BaseMods, string LauncherVersion, string? LauncherUrl,
+    IReadOnlyList<string>? ModOrder = null, IReadOnlyList<string>? DisabledModIds = null) {
   static readonly JsonSerializerOptions O = new() { PropertyNameCaseInsensitive = true };
   public static Feed Parse(string json) => JsonSerializer.Deserialize<Feed>(json, O) ?? throw new InvalidDataException("feed boş");
   public const string Url = "https://raw.githubusercontent.com/fallenhak/zomboid-fps-launcher/main/feed.json";

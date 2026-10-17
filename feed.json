@@ -1,5 +1,734 @@
-{ "gameVersion": "42.21", "launcherVersion": "0.1.0", "launcherUrl": null,
-  "baseMods": [
-    { "workshopId": 3619862853, "name": "ZombieBuddy", "locked": true },
-    { "workshopId": 3809306528, "name": "Project Viewpoint", "locked": true },
-    { "workshopId": 3810302175, "name": "6244 3D models for Viewpoint" } ] }
+{
+ "gameVersion": "42.21",
+ "launcherVersion": "0.1.0",
+ "launcherUrl": null,
+ "baseMods": [
+  {
+   "workshopId": 3619862853,
+   "name": "ZombieBuddy",
+   "locked": true
+  },
+  {
+   "workshopId": 3809306528,
+   "name": "Project Viewpoint",
+   "locked": true
+  },
+  {
+   "workshopId": 3810302175,
+   "name": "6244 3D models for Viewpoint"
+  },
+  {
+   "workshopId": 3811472160,
+   "name": "3d Blood VFX for Viewpoint (experimental)"
+  },
+  {
+   "workshopId": 3813801053,
+   "name": "Blood FX for Viewpoint - Fixes"
+  },
+  {
+   "workshopId": 3803984183,
+   "name": "Project A-Life [ALIFE NPCS]"
+  },
+  {
+   "workshopId": 3661336777,
+   "name": "Horse Mod [B42.20+/MP]"
+  },
+  {
+   "workshopId": 3461415167,
+   "name": "[B42.20+/MP] Bicycle!"
+  },
+  {
+   "workshopId": 3404737883,
+   "name": "Autotsar Motor Club B42"
+  },
+  {
+   "workshopId": 3783444342,
+   "name": "[B42]Aviation Core (Beta)"
+  },
+  {
+   "workshopId": 3409723807,
+   "name": "[B42] UH-1B Helicopter (Beta)"
+  },
+  {
+   "workshopId": 3812896812,
+   "name": "Helicopter Fix - Project Viewpoint"
+  },
+  {
+   "workshopId": 3761077099,
+   "name": "[B42] Vanilla Firearms Expansion [CLASSIC]"
+  },
+  {
+   "workshopId": 3813760573,
+   "name": "HorseMod + Viewpoint Controls Patch"
+  },
+  {
+   "workshopId": 3812612054,
+   "name": "Project Viewpoint: Recoil & ADS"
+  },
+  {
+   "workshopId": 3812864848,
+   "name": "Viewpoint True Ballistics"
+  },
+  {
+   "workshopId": 3813194971,
+   "name": "Viewpoint - Advanced Throwables"
+  },
+  {
+   "workshopId": 3813908957,
+   "name": "Project Viewpoint: True Weathers & Lighting"
+  },
+  {
+   "workshopId": 3813489363,
+   "name": "SMB steps"
+  },
+  {
+   "workshopId": 3783094058,
+   "name": "Vanilla Outfits Expanded"
+  },
+  {
+   "workshopId": 3401134276,
+   "name": "Vanilla Gear Expanded"
+  },
+  {
+   "workshopId": 3270190005,
+   "name": "Detailed Footwear"
+  },
+  {
+   "workshopId": 3171167894,
+   "name": "that DAMN Library"
+  },
+  {
+   "workshopId": 3531611692,
+   "name": "Lethal Stealth"
+  },
+  {
+   "workshopId": 3457132019,
+   "name": "Specific Loot (KI5)"
+  },
+  {
+   "workshopId": 3663625294,
+   "name": "Reorder The Hotbar (B42+ Fixed)"
+  },
+  {
+   "workshopId": 2699828474,
+   "name": "Rebalanced Prop Moving"
+  },
+  {
+   "workshopId": 2956146279,
+   "name": "Rain Cleans Blood [B42.20 + MP]"
+  },
+  {
+   "workshopId": 3520758551,
+   "name": "More Car Features + Spawn Zones Expansion"
+  },
+  {
+   "workshopId": 3777587577,
+   "name": "LG Tape XP Indicator"
+  },
+  {
+   "workshopId": 3779164273,
+   "name": "Improvised Silencers - Build 42.20 Compatibility"
+  },
+  {
+   "workshopId": 3426448380,
+   "name": "Immersive Suicide [B42/B41]"
+  },
+  {
+   "workshopId": 3607686447,
+   "name": "Immersive Blackouts [B42MP]"
+  },
+  {
+   "workshopId": 2447729538,
+   "name": "Fluffy Hair [B41/B42]"
+  },
+  {
+   "workshopId": 3682936016,
+   "name": "Equipment UI – STABLE +"
+  },
+  {
+   "workshopId": 3671176591,
+   "name": "dustinguished bolt cutters"
+  },
+  {
+   "workshopId": 2313387159,
+   "name": "Better Sorting"
+  },
+  {
+   "workshopId": 3387539308,
+   "name": "Auto Mechanics"
+  },
+  {
+   "workshopId": 3775549570,
+   "name": "Alice's Weapon Sling"
+  },
+  {
+   "workshopId": 3624971238,
+   "name": "Yet Another PZ LIbrary"
+  },
+  {
+   "workshopId": 3642084851,
+   "name": "[B41/42] Minimal Sidebar (Auto Hide)"
+  },
+  {
+   "workshopId": 3402491515,
+   "name": "Tsar's Common Library B42"
+  },
+  {
+   "workshopId": 3387957272,
+   "name": "[B42.20] Detailed Descriptions for Occupations and Traits"
+  },
+  {
+   "workshopId": 3749026793,
+   "name": "[B42.20] Carry Visible Items In Hands [WIP]"
+  },
+  {
+   "workshopId": 3816442251,
+   "name": "Viewpoint: Living Props"
+  },
+  {
+   "workshopId": 3814486926,
+   "name": "Viewpoint - 3D Fences"
+  },
+  {
+   "workshopId": 3815630947,
+   "name": "Viewpoint Rolling Hills"
+  },
+  {
+   "workshopId": 3817555882,
+   "name": "Rolling Hills Physics Addon (Project Viewpoint)"
+  },
+  {
+   "workshopId": 3814398576,
+   "name": "Surface Fix - Project Viewpoint"
+  },
+  {
+   "workshopId": 3812151347,
+   "name": "Door Fix - Project Viewpoint"
+  },
+  {
+   "workshopId": 3806955469,
+   "name": "True Cargo - Project Full HD"
+  },
+  {
+   "workshopId": 3781616141,
+   "name": "[B42.20+] Vehicle Aim Roof Fix"
+  },
+  {
+   "workshopId": 3785695033,
+   "name": "[B42.20+] Vehicle Enter/Exit Fix"
+  },
+  {
+   "workshopId": 3783874874,
+   "name": "[B42.20+] Vehicle Weapon Clipping Fix"
+  },
+  {
+   "workshopId": 3740300378,
+   "name": "KI5 Mini-fixes"
+  },
+  {
+   "workshopId": 3501302358,
+   "name": "Vehicle Seat UI (KI5)"
+  },
+  {
+   "workshopId": 3436499337,
+   "name": "Vehicle Military Zones"
+  },
+  {
+   "workshopId": 2625625421,
+   "name": "Containers!"
+  },
+  {
+   "workshopId": 3330403100,
+   "name": "Trailers!"
+  },
+  {
+   "workshopId": 3670064951,
+   "name": "Campers!"
+  },
+  {
+   "workshopId": 2932547723,
+   "name": "'93 Lincoln Town Car + Limo"
+  },
+  {
+   "workshopId": 3088951320,
+   "name": "'93 Ford Taurus"
+  },
+  {
+   "workshopId": 3001592312,
+   "name": "'93 Ford Mustang"
+  },
+  {
+   "workshopId": 3073430075,
+   "name": "'93 Ford F-Series"
+  },
+  {
+   "workshopId": 2969343830,
+   "name": "'93 Ford CF8000 Elgin Street Sweeper"
+  },
+  {
+   "workshopId": 3152529790,
+   "name": "'93 Chevrolet Suburban / Silverado"
+  },
+  {
+   "workshopId": 2846036306,
+   "name": "'92 NISSAN Skyline GT-R (R32)"
+  },
+  {
+   "workshopId": 3287727378,
+   "name": "'92 Jeep YJ Wrangler"
+  },
+  {
+   "workshopId": 2962175696,
+   "name": "'92 Ford Crown Victoria"
+  },
+  {
+   "workshopId": 2642541073,
+   "name": "'92 AM General M998 + M101A3 Cargo trailer"
+  },
+  {
+   "workshopId": 2409333430,
+   "name": "'91 RANGE ROVER Classic"
+  },
+  {
+   "workshopId": 3504401781,
+   "name": "'91 Nissan 240SX"
+  },
+  {
+   "workshopId": 3770890864,
+   "name": "'91 Lexus LS400"
+  },
+  {
+   "workshopId": 3008795514,
+   "name": "'91 Geo Metro"
+  },
+  {
+   "workshopId": 3539691958,
+   "name": "'91 Ford Ranger"
+  },
+  {
+   "workshopId": 3366300557,
+   "name": "'91 Ford LTD Crown Victoria / Country Squire"
+  },
+  {
+   "workshopId": 2942793445,
+   "name": "'90 Pierce Arrow Pumper and Ladder Trucks"
+  },
+  {
+   "workshopId": 2952802178,
+   "name": "'90 Ford F350 Ambulance"
+  },
+  {
+   "workshopId": 3110913021,
+   "name": "'90 BMW 3 Series (E30)"
+  },
+  {
+   "workshopId": 3292659291,
+   "name": "'89 Volvo 200 Series"
+  },
+  {
+   "workshopId": 3570973322,
+   "name": "'89 LAND ROVER Defender"
+  },
+  {
+   "workshopId": 2932549988,
+   "name": "'89 Isuzu Trooper"
+  },
+  {
+   "workshopId": 2886833398,
+   "name": "'89 Ford Bronco"
+  },
+  {
+   "workshopId": 3034636011,
+   "name": "'89 Dodge Caravan"
+  },
+  {
+   "workshopId": 3435796523,
+   "name": "'88 Toyota Hilux"
+  },
+  {
+   "workshopId": 2886832936,
+   "name": "'88 Chevrolet S10"
+  },
+  {
+   "workshopId": 3052360250,
+   "name": "'87 Toyota MR2"
+  },
+  {
+   "workshopId": 3779315249,
+   "name": "'87 Toyota Corolla AE92"
+  },
+  {
+   "workshopId": 3110911330,
+   "name": "'87 Ford B700/F700 Trucks"
+  },
+  {
+   "workshopId": 3196180339,
+   "name": "'87 Chevrolet Suburban"
+  },
+  {
+   "workshopId": 3226885926,
+   "name": "'87 Buick Regal"
+  },
+  {
+   "workshopId": 2566953935,
+   "name": "'86 Oshkosh P19A + Military Trailers"
+  },
+  {
+   "workshopId": 2870394916,
+   "name": "'86 Ford Econoline E-150 + Pop Culture vans"
+  },
+  {
+   "workshopId": 3428008364,
+   "name": "'86 Chevrolet CUCVs + M101A2 Trailer"
+  },
+  {
+   "workshopId": 3413706334,
+   "name": "'85 Pontiac Parisienne"
+  },
+  {
+   "workshopId": 3418253716,
+   "name": "'85 Oldsmobile Delta 88"
+  },
+  {
+   "workshopId": 3614034284,
+   "name": "'85 Chevrolet Step-Van"
+  },
+  {
+   "workshopId": 3413704851,
+   "name": "'85 Chevrolet Caprice / Impala"
+  },
+  {
+   "workshopId": 3418252689,
+   "name": "'85 Buick LeSabre"
+  },
+  {
+   "workshopId": 3601417745,
+   "name": "'84 Oldsmobile 98 Regency"
+  },
+  {
+   "workshopId": 2805630347,
+   "name": "'84 Mercedes Benz W460"
+  },
+  {
+   "workshopId": 3409287192,
+   "name": "'84 Jeep XJ Cherokee"
+  },
+  {
+   "workshopId": 3684254299,
+   "name": "'84 Chevrolet Corvette"
+  },
+  {
+   "workshopId": 3592777775,
+   "name": "'84 Cadillac DeVille"
+  },
+  {
+   "workshopId": 3596903773,
+   "name": "'84 Buick Electra"
+  },
+  {
+   "workshopId": 3379334330,
+   "name": "'82 Porsche 911"
+  },
+  {
+   "workshopId": 3320947974,
+   "name": "'82 Pontiac Firebird"
+  },
+  {
+   "workshopId": 2618213077,
+   "name": "'82 Oshkosh M911 + Military Semi-Trailers"
+  },
+  {
+   "workshopId": 2886832257,
+   "name": "'82 Jeep J10"
+  },
+  {
+   "workshopId": 3253385114,
+   "name": "'81 DeLorean DMC-12"
+  },
+  {
+   "workshopId": 3703948448,
+   "name": "'79 Chevrolet Camaro"
+  },
+  {
+   "workshopId": 3726526329,
+   "name": "'78 Lamborghini Countach"
+  },
+  {
+   "workshopId": 2799152995,
+   "name": "'78 AM General M35 Series Trucks"
+  },
+  {
+   "workshopId": 3346905070,
+   "name": "'77 Pontiac Firebird"
+  },
+  {
+   "workshopId": 3730833846,
+   "name": "'76 Chrysler New Yorker"
+  },
+  {
+   "workshopId": 3161951724,
+   "name": "'76 Chevrolet K Series"
+  },
+  {
+   "workshopId": 3213391371,
+   "name": "'75 Pontiac Grand Prix"
+  },
+  {
+   "workshopId": 3743371090,
+   "name": "'73 NISSAN Skyline GT-R"
+  },
+  {
+   "workshopId": 3490370700,
+   "name": "'73 Ford Falcon"
+  },
+  {
+   "workshopId": 3642935062,
+   "name": "'70 Plymouth Road Runner"
+  },
+  {
+   "workshopId": 2913633066,
+   "name": "'70 Plymouth Barracuda"
+  },
+  {
+   "workshopId": 3670063857,
+   "name": "'70 Ford Escort"
+  },
+  {
+   "workshopId": 2873290424,
+   "name": "'70 Dodge Challenger"
+  },
+  {
+   "workshopId": 3766571591,
+   "name": "'70 Chevrolet Chevelle / El Camino"
+  },
+  {
+   "workshopId": 2937786633,
+   "name": "'69 Mini Mk2"
+  },
+  {
+   "workshopId": 3756938756,
+   "name": "'69 Ford Mustang"
+  },
+  {
+   "workshopId": 3631989559,
+   "name": "'69 Dodge Charger"
+  },
+  {
+   "workshopId": 2991201484,
+   "name": "'69 Chevrolet Camaro"
+  },
+  {
+   "workshopId": 3258343790,
+   "name": "'68 Pontiac Firebird"
+  },
+  {
+   "workshopId": 3026723485,
+   "name": "'67 Shelby GT500 + Eleanor"
+  },
+  {
+   "workshopId": 2478247379,
+   "name": "'67 Cadillac Gage Commando"
+  },
+  {
+   "workshopId": 3447272250,
+   "name": "'66 Pontiac LeMans / GTO"
+  },
+  {
+   "workshopId": 3566868353,
+   "name": "'65 Pontiac Banshee"
+  },
+  {
+   "workshopId": 3041122351,
+   "name": "'63 Volkswagen Type 2 Van"
+  },
+  {
+   "workshopId": 3005903549,
+   "name": "'63 Volkswagen 1300 Beetle"
+  },
+  {
+   "workshopId": 3787530735,
+   "name": "'62 Daimler Ferret"
+  },
+  {
+   "workshopId": 2772575623,
+   "name": "'59 Cadillac Miller-Meteor + ECTO-1"
+  },
+  {
+   "workshopId": 2900580391,
+   "name": "'49 Dodge Power Wagon Crew Cab"
+  },
+  {
+   "workshopId": 3811640626,
+   "name": "Project Viewpoint - 3D Tracer Fix"
+  }
+ ],
+ "modOrder": [
+  "ZombieBuddy",
+  "Viewpoint",
+  "PZVoxelStudioViewpoint",
+  "damnlib",
+  "YAPZLib",
+  "tsarslib",
+  "AviationCore",
+  "VFExpansion1",
+  "ViewpointBloodFX",
+  "ViewpointBloodFXAddon",
+  "ProjectViewpointADS",
+  "ViewpointTrueBallistics",
+  "ViewpointTrueWeathers",
+  "ViewpointTrueWeathersGameplay",
+  "ViewpointRollingHills",
+  "RollingHillsPhysics",
+  "ViewpointSurface",
+  "ViewpointDoor",
+  "ViewpointFences3D",
+  "BicycleMod",
+  "WayMoreCars",
+  "Horse",
+  "HorsePatch3d",
+  "UH-1BHelicopter",
+  "ViewpointHeli",
+  "amclub",
+  "ProjectALifeNPCs",
+  "Viewpoint3DTracerFix",
+  "ImprovisedSilencers",
+  "alicesWeaponSling",
+  "alicesWeaponSlingRadialMenu",
+  "RET_LethalStealth",
+  "SMB_steps",
+  "VanillaOutfitsExpanded",
+  "VanillaGearExpanded",
+  "DetailedFootwear",
+  "FH",
+  "CVI",
+  "RebalancedPropMoving",
+  "RainCleansBlood",
+  "ImmersiveBlackouts",
+  "stanks_suicide",
+  "dustinguished_bolt_cutters",
+  "AutoMechanics",
+  "EQUIPMENT_UI_B42",
+  "REORDER_THE_HOTBAR",
+  "BetterSortCC",
+  "MinimalSidebar",
+  "LGTapeXP",
+  "DetailedDescriptionsForOccupationsAndTraits",
+  "isoContainers",
+  "KI5trailers",
+  "KI5campers",
+  "93townCar",
+  "93fordTaurus",
+  "93mustangSSP",
+  "93fordF350",
+  "93fordElgin",
+  "93chevySuburban",
+  "93chevySuburbanExpanded",
+  "92nissanGTR",
+  "92jeepYJ",
+  "92jeepYJJP18",
+  "92fordCVPI",
+  "92amgeneralM998",
+  "92amgeneralM998extra",
+  "91range",
+  "91nissan240sx",
+  "91lexusLS400",
+  "91geoMetro",
+  "91fordRanger",
+  "91fordLTD",
+  "90pierceArrow",
+  "90fordF350ambulance",
+  "90bmwE30",
+  "89volvo200",
+  "89defender",
+  "89trooper",
+  "89fordBronco",
+  "89dodgeCaravan",
+  "88toyotaHilux",
+  "88chevyS10",
+  "87toyotaMR2",
+  "87toyotaCorolla",
+  "87fordB700",
+  "87chevySuburban",
+  "87buickRegal",
+  "86oshkoshP19A",
+  "86fordE150",
+  "86fordE150dnd",
+  "86fordE150expanded",
+  "86fordE150mm",
+  "86fordE150pd",
+  "86chevyCUCV",
+  "85pontiacParisienne",
+  "85oldsmobileDelta88",
+  "85chevyStepVan",
+  "85chevyStepVanexpanded",
+  "85chevyCaprice",
+  "85buickLeSabre",
+  "84oldsmobile98",
+  "84merc",
+  "84jeepXJ",
+  "84corvette",
+  "84cadillacDeVille",
+  "84buickElectra",
+  "82porsche911",
+  "82firebird",
+  "82firebirdKITT",
+  "82oshkoshM911",
+  "82jeepJ10",
+  "82jeepJ10t",
+  "81deloreanDMC12",
+  "81deloreanDMC12BTTF",
+  "79camaro",
+  "78lamboCountach",
+  "78amgeneralM35A2",
+  "78amgeneralM35A2extra",
+  "78amgeneralM49A2C",
+  "78amgeneralM50A3",
+  "78amgeneralM62",
+  "77firebird",
+  "76chryslerNewYorker",
+  "76chevyKseries",
+  "76chevyKseriesExpanded",
+  "75grandPrix",
+  "73nissanGTR",
+  "73fordFalcon",
+  "73fordFalconPS",
+  "70roadRunner",
+  "70barracuda",
+  "70fordEscort",
+  "70dodge",
+  "70chevelle",
+  "69mini",
+  "69mini_ItalianJob",
+  "69mini_MrBean",
+  "69mini_PitbullSpecial",
+  "69fordMustang",
+  "69fordMustangExtra",
+  "69charger",
+  "69camaro",
+  "68firebird",
+  "67gt500",
+  "67commando",
+  "66pontiacLeMans",
+  "65banshee",
+  "63Type2Van",
+  "63beetle",
+  "62daimlerFerret",
+  "59meteor",
+  "ECTO1",
+  "49powerWagon",
+  "SpecLoot",
+  "VMZNEW",
+  "VSUIKI5",
+  "KI5minifixes",
+  "CarEnterExitFix",
+  "CarRoofFix",
+  "CarWeaponFix",
+  "ViewpointLivingProps"
+ ],
+ "disabledModIds": [
+  "equipmentuipatch",
+  "EQUIPMENT_UI",
+  "PFHDTrueCargo",
+  "ViewpointAdvancedThrowables"
+ ]
+}

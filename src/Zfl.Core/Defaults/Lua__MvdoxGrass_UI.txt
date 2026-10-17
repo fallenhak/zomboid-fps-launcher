@@ -1,0 +1,6 @@
+theme=1
+scale=3
+roadlessApo=0
+interiorlessApo=0
+rooflessApo=0
+welcomeSeen=1

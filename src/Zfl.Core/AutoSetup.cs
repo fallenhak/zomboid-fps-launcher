@@ -91,7 +91,10 @@ public static class ViewpointSetup {
 
 /// Yeni kurulumun hazır ayarları (Burak'ın ayarları, launcher'a gömülü). Yalnız dosya yoksa yazılır; oyuncunun ayarı ezilmez.
 public static class GameDefaults {
-  public static readonly string[] Files = ["viewpoint-live.properties", "viewpoint-frame-caps.properties", "options.ini"];
+  /// Hazır ayar dosyaları (oyun ve mod ayarları); "Lua__x.ini" gibi adlar Zomboid altındaki "Lua/x.ini" yerine gider.
+  public static readonly string[] Files = typeof(GameDefaults).Assembly.GetManifestResourceNames()
+    .Where(n => n.StartsWith("defaults/")).Select(n => n["defaults/".Length..]).Order().ToArray();
+  public static string TargetPath(string name) => name.Replace("__", "/");
 
   public static string Read(string name) =>
     new StreamReader(typeof(GameDefaults).Assembly.GetManifestResourceStream($"defaults/{name}")!).ReadToEnd();
@@ -101,11 +104,12 @@ public static class GameDefaults {
     Directory.CreateDirectory(l.ZomboidDir);
     var written = new List<string>();
     foreach (var name in Files) {
-      var target = Path.Combine(l.ZomboidDir, name);
+      var target = Path.Combine(l.ZomboidDir, TargetPath(name));
       if (File.Exists(target)) continue;
       var text = Read(name);
       if (name == "viewpoint-live.properties") text += "onboarding.edition=1\nonboarding.finished=true\n";
       if (name == "options.ini") text += $"language={gameLanguage}\n";
+      Directory.CreateDirectory(Path.GetDirectoryName(target)!);
       File.WriteAllText(target, text);
       written.Add(name);
     }

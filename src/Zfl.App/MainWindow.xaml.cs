@@ -52,6 +52,7 @@ public partial class MainWindow : Window
 
     async void OnLoaded(object sender, RoutedEventArgs e)
     {
+        var fresh = !File.Exists(StatePath);
         state = LauncherState.Load(StatePath);
         if (state.MemoryMb == 0) state.MemoryMb = Memory.DefaultMb(TotalRam);
         steamGame = SteamLocator.FindGame();
@@ -73,6 +74,8 @@ public partial class MainWindow : Window
             feedOnline = true;
         }
         catch { feed = Feed.Builtin; feedOnline = false; }
+        // ilk açılışta hazır listedeki kapalı modlar kapalı gelir
+        if (fresh && feed.DisabledModIds is { } off) state.DisabledModIds = [.. off];
 
         MemorySlider.Value = state.MemoryMb / 1024.0;
         MemoryHint.Text = Loc.F("set.memHint", TotalRam / (1L << 30));
@@ -317,7 +320,7 @@ public partial class MainWindow : Window
     {
         var rows = Rows(l);
         var byKey = rows.ToDictionary(r => r.Key, StringComparer.OrdinalIgnoreCase);
-        var ordered = LoadOrder.Merge(rows.Select(r => r.Key).ToList(), pending && undoStack.Count > 0 ? pendingOrder : state.ModOrder).Select(k => byKey[k]).ToList();
+        var ordered = LoadOrder.Merge(rows.Select(r => r.Key).ToList(), pending && undoStack.Count > 0 ? pendingOrder : state.ModOrder.Count > 0 ? state.ModOrder : feed.ModOrder ?? []).Select(k => byKey[k]).ToList();
         var sorted = new Queue<ModInfo>(LoadOrder.Sort(ordered.Where(r => r.Info is not null).Select(r => r.Info!).ToList()));
         return ordered.Select(r => r.Info is null ? r : byKey[sorted.Dequeue().Id]).ToList();
     }
@@ -408,7 +411,7 @@ public partial class MainWindow : Window
             Log.Write($"update: not downloaded yet: {missing.Name}");
             return true;
         }
-        var ids = feed.BaseMods.Select(m => m.WorkshopId).Concat(state.UserMods).ToList();
+        var ids = feed.BaseMods.Select(m => m.WorkshopId).Concat(state.UserMods).Distinct().ToList();
         if (Installer.Stray(l, KeepFolders(l, ids)) is [_, ..] stray)
         {
             Log.Write($"update: mods to remove: {string.Join(", ", stray)}");
@@ -514,7 +517,7 @@ public partial class MainWindow : Window
             await steam.EnsureInstalledAsync(default);
 
             var installer = NewInstaller(l, steam, progress);
-            var ids = feed.BaseMods.Select(m => m.WorkshopId).Concat(state.UserMods).ToList();
+            var ids = feed.BaseMods.Select(m => m.WorkshopId).Concat(state.UserMods).Distinct().ToList();
             try
             {
                 // zamanlar indirmeden önce alınır: indirme sırasında gelen güncelleme bir dahaki denetimde yakalanır
@@ -574,7 +577,8 @@ public partial class MainWindow : Window
     /// Tıkla oyna: temel Java modlarını ZombieBuddy'ye önceden onaylatır, Viewpoint ilk kurulumunu doldurur.
     void PrepareGameSettings(InstallLayout l)
     {
-        ZbApprovals.ApproveMods(l, OrderedRows(l).Where(r => r.IsBase && r.Info is { IsJava: true }).Select(r => r.Info!));
+        // listedeki bütün açık Java modları: oyuncu listeye kendisi eklediğinde zaten launcher'da uyarı görmüştü
+        ZbApprovals.ApproveMods(l, OrderedMods(l).Where(m => m.IsJava));
         // yeni kurulum hazır ayarlarla gelir; oyuncunun mevcut ayar dosyalarına dokunulmaz
         foreach (var f in GameDefaults.ApplyIfMissing(l, Loc.Lang == "tr" ? "TR" : "EN")) Log.Write($"default settings written: {f}");
         // Viewpoint 12 GB altı kartlarda doku sıkıştırma istiyor; kurulum ekranı istense de baştan açık olsun
@@ -597,6 +601,7 @@ public partial class MainWindow : Window
         try
         {
             string? err;
+            if (state.PzOptimization) PzOptimization.PreferCompatibility(l.ZomboidDir);
             if (state.PzOptimization && (!pz.Installed || gameChanged))
             {
                 ShowProgress(Loc.T("pr.pzopt"));

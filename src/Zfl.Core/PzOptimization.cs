@@ -43,6 +43,12 @@ public sealed class PzOptimization(string gameDir, string toolsDir, IProcessRunn
     var (code, output) = await RunAsync(await ScriptAsync(ct), "-Uninstall", ct);
     return code == 0 ? null : LastError(output);
   }
+  /// Viewpoint gibi Java modlarıyla çakışan iyileştirmelerini kapatsın (varsayılanı yalnız rapor yazmak).
+  /// Oyuncu Seçenekler'de kendisi seçtiyse dokunulmaz.
+  public static void PreferCompatibility(string zomboidDir) {
+    var f = Path.Combine(zomboidDir, "pzopt", "options.ini");
+    if (ViewpointSetup.Get(f, "modProfile") is null) ViewpointSetup.SetKeys(f, new Dictionary<string, string> { ["modProfile"] = "compatibility" });
+  }
   public static string LastError(string output) =>
     output.Split('\n').Select(x => x.Trim()).LastOrDefault(x => x.StartsWith("error:")) ?? output.Split('\n').LastOrDefault(x => x.Trim().Length > 0)?.Trim() ?? "";
 }

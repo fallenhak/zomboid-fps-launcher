@@ -1,0 +1,4 @@
+# Mvdox Grass - hidden Viewpoint plant sprite IDs (one exact ID per line)
+# Remove lines to unhide; lines starting with # are ignored.
+# Edit this file, then toggle Hide Certain Plants OFF and ON in Viewpoint.
+d_plants_1_32
