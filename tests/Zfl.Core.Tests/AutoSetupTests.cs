@@ -129,3 +129,11 @@ public class FirstRunTests {
     Assert.True(File.Exists(Path.Combine(l.ModsDir, "reset-mods-42_00.txt")));
   }
 }
+
+public class ViewpointNativesTests {
+  [Fact(Skip = "internetten ~100 MB indirir; elle çalıştır")] public async Task DownloadsSignedFiles() {
+    var l = new InstallLayout(Directory.CreateTempSubdirectory("zfl").FullName);
+    var got = await ViewpointNatives.EnsureAsync(l, new HttpClient { Timeout = TimeSpan.FromMinutes(10) }, true, default);
+    Assert.Equal(5, got.Count);
+  }
+}

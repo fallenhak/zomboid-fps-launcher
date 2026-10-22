@@ -549,6 +549,13 @@ public partial class MainWindow : Window
             installer.WriteModList(ordered);
             installer.SyncZombieBuddy();
             PrepareGameSettings(l);
+            // DLSS / FSR 3 dosyaları: yoksa Viewpoint oyunda "indir" diye soruyor
+            try
+            {
+                var nvidia = SystemInfo.Gpus().Any(g => g.Contains("NVIDIA", StringComparison.OrdinalIgnoreCase));
+                foreach (var f in await ViewpointNatives.EnsureAsync(l, new HttpClient { Timeout = TimeSpan.FromMinutes(10) }, nvidia, default)) Log.Write($"viewpoint native downloaded: {f}");
+            }
+            catch (Exception ex) { Log.Error("viewpoint natives", ex); }
             if (missing.Count > 0) Status(Loc.F("s.missingReq", string.Join(", ", missing)));
 
             if (steamGame is not null) state.LastBuildId = GameInfo.BuildId(steamGame);
