@@ -37,6 +37,8 @@ public sealed class LauncherState {
   public bool ShowFps { get; set; } = true;
   /// Oyun -debug ile açılsın (geliştirici menüleri).
   public bool DebugMode { get; set; }
+  /// PZ_Optimization oyun klasörüne kurulsun (FPS artışı; oyun güncellenince launcher yeniden kurar).
+  public bool PzOptimization { get; set; } = true;
   /// Kullanıcının mod sırası (mod id'leri; henüz inmemiş Workshop öğeleri için "ws:<numara>").
   public List<string> ModOrder { get; set; } = [];
   static readonly JsonSerializerOptions O = new() { WriteIndented = true };
