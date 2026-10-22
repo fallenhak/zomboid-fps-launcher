@@ -99,8 +99,8 @@ public static class GameDefaults {
   public static string Read(string name) =>
     new StreamReader(typeof(GameDefaults).Assembly.GetManifestResourceStream($"defaults/{name}")!).ReadToEnd();
 
-  /// Eksik ayar dosyalarını yazar; yazdıklarının adını döner.
-  public static IReadOnlyList<string> ApplyIfMissing(InstallLayout l, string gameLanguage) {
+  /// Eksik ayar dosyalarını yazar; yazdıklarının adını döner. Ekran verilirse oyun o çözünürlükte sınırsız pencereli açılır.
+  public static IReadOnlyList<string> ApplyIfMissing(InstallLayout l, string gameLanguage, (int Width, int Height)? screen = null) {
     Directory.CreateDirectory(l.ZomboidDir);
     var written = new List<string>();
     foreach (var name in Files) {
@@ -109,6 +109,7 @@ public static class GameDefaults {
       var text = Read(name);
       if (name == "viewpoint-live.properties") text += "onboarding.edition=1\nonboarding.finished=true\n";
       if (name == "options.ini") text += $"language={gameLanguage}\n";
+      if (name == "options.ini" && screen is var (w, h)) text += $"fullScreen=false\nborderless=true\nwidth={w}\nheight={h}\n";
       Directory.CreateDirectory(Path.GetDirectoryName(target)!);
       File.WriteAllText(target, text);
       written.Add(name);

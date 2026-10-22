@@ -111,3 +111,21 @@ public class GameDefaultsTests {
       Assert.DoesNotContain("\n" + k, "\n" + t);
   }
 }
+
+public class FirstRunTests {
+  [Fact] public void OptionsGetBorderlessScreenSize() {
+    var l = new InstallLayout(Directory.CreateTempSubdirectory("zfl").FullName);
+    GameDefaults.ApplyIfMissing(l, "EN", (2560, 1440));
+    var o = ViewpointSetup.OptionsFile(l);
+    Assert.Equal("true", ViewpointSetup.Get(o, "borderless"));
+    Assert.Equal("false", ViewpointSetup.Get(o, "fullScreen"));
+    Assert.Equal("2560", ViewpointSetup.Get(o, "width"));
+    Assert.Equal("1440", ViewpointSetup.Get(o, "height"));
+    Assert.Equal("240", ViewpointSetup.Get(o, "frameRate"));
+  }
+  [Fact] public void ModListKeepsGameFromResettingIt() {
+    var l = new InstallLayout(Directory.CreateTempSubdirectory("zfl").FullName);
+    new Installer(l, null!, new Progress<string>()).WriteModList([]);
+    Assert.True(File.Exists(Path.Combine(l.ModsDir, "reset-mods-42_00.txt")));
+  }
+}

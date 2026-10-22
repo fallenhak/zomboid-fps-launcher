@@ -15,6 +15,31 @@ static class SystemInfo
     [DllImport("kernel32.dll", SetLastError = true)]
     static extern bool GlobalMemoryStatusEx(ref MemoryStatusEx m);
 
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    struct DevMode
+    {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string DeviceName;
+        public ushort SpecVersion, DriverVersion, Size, DriverExtra;
+        public uint Fields;
+        public int PositionX, PositionY;
+        public uint DisplayOrientation, DisplayFixedOutput;
+        public short Color, Duplex, YResolution, TTOption, Collate;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string FormName;
+        public ushort LogPixels;
+        public uint BitsPerPel, PelsWidth, PelsHeight, DisplayFlags, DisplayFrequency;
+        public uint IcmMethod, IcmIntent, MediaType, DitherType, Reserved1, Reserved2, PanningWidth, PanningHeight;
+    }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    static extern bool EnumDisplaySettings(string? device, int mode, ref DevMode dm);
+
+    /// Ana ekranın gerçek çözünürlüğü (Windows ölçeklendirmesinden bağımsız); bulunamazsa null.
+    public static (int Width, int Height)? ScreenSize()
+    {
+        var dm = new DevMode { Size = (ushort)Marshal.SizeOf<DevMode>() };
+        return EnumDisplaySettings(null, -1, ref dm) && dm.PelsWidth > 0 ? ((int)dm.PelsWidth, (int)dm.PelsHeight) : null;
+    }
+
     public static long TotalRam()
     {
         var m = new MemoryStatusEx { Length = (uint)Marshal.SizeOf<MemoryStatusEx>() };

@@ -167,6 +167,9 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
   public void WriteModList(IEnumerable<ModInfo> ordered) {
     Directory.CreateDirectory(l.ModsDir);
     File.WriteAllText(Path.Combine(l.ModsDir, "default.txt"), ModList.DefaultTxt(ordered.Select(m => m.Id)));
+    // Bu dosya yoksa oyun ilk açılışta default.txt'yi boşaltır (bütün modlar kapalı gelir).
+    var reset = Path.Combine(l.ModsDir, "reset-mods-42_00.txt");
+    if (!File.Exists(reset)) File.WriteAllText(reset, "If this file does not exist, default.txt will be reset to empty (no mods active).");
   }
   /// Yalnız değişen dosyaları kopyalar (boyut ya da tarih farklı), kaynakta olmayanları siler.
   /// 3D modeller gibi 37 bin dosyalı paketlerde baştan kopyalamak dakikalar sürüyordu.

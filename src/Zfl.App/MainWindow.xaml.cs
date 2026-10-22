@@ -576,7 +576,7 @@ public partial class MainWindow : Window
         // listedeki bütün açık Java modları: oyuncu listeye kendisi eklediğinde zaten launcher'da uyarı görmüştü
         ZbApprovals.ApproveMods(l, OrderedMods(l).Where(m => m.IsJava));
         // yeni kurulum hazır ayarlarla gelir; oyuncunun mevcut ayar dosyalarına dokunulmaz
-        foreach (var f in GameDefaults.ApplyIfMissing(l, Loc.Lang == "tr" ? "TR" : "EN")) Log.Write($"default settings written: {f}");
+        foreach (var f in GameDefaults.ApplyIfMissing(l, Loc.Lang == "tr" ? "TR" : "EN", SystemInfo.ScreenSize())) Log.Write($"default settings written: {f}");
         // Viewpoint 12 GB altı kartlarda doku sıkıştırma istiyor; kurulum ekranı istense de baştan açık olsun
         if (ViewpointSetup.NeedsCompression(SystemInfo.VramMiB())) ViewpointSetup.EnableCompression(l);
         if (state.ViewpointSetupWanted)
