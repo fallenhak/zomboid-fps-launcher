@@ -79,6 +79,10 @@ public static class ViewpointSetup {
   public static void SetFpsOverlay(InstallLayout l, bool on) =>
     SetKeys(SettingsFile(l), new Dictionary<string, string> { ["overlay.mode"] = on ? "Compact" : "Off" });
 
+  /// Viewpoint yapımcısının görünmez zombi çözümü (ellu, Discord): bakış belleği 512 MiB.
+  public static void ApplyFixes(InstallLayout l) =>
+    SetKeys(SettingsFile(l), new Dictionary<string, string> { ["memory.lookMiB"] = "512" });
+
   public static void EnableCompression(InstallLayout l) =>
     SetKeys(OptionsFile(l), new Dictionary<string, string> { ["textureCompression"] = "true" });
 
@@ -100,12 +104,13 @@ public static class GameDefaults {
     new StreamReader(typeof(GameDefaults).Assembly.GetManifestResourceStream($"defaults/{name}")!).ReadToEnd();
 
   /// Eksik ayar dosyalarını yazar; yazdıklarının adını döner. Ekran verilirse oyun o çözünürlükte sınırsız pencereli açılır.
-  public static IReadOnlyList<string> ApplyIfMissing(InstallLayout l, string gameLanguage, (int Width, int Height)? screen = null) {
+  /// viewpointSetup: oyuncu Viewpoint kurulum ekranını istedi; Viewpoint'in kendi ayar dosyaları yazılmaz.
+  public static IReadOnlyList<string> ApplyIfMissing(InstallLayout l, string gameLanguage, (int Width, int Height)? screen = null, bool viewpointSetup = false) {
     Directory.CreateDirectory(l.ZomboidDir);
     var written = new List<string>();
     foreach (var name in Files) {
       var target = Path.Combine(l.ZomboidDir, TargetPath(name));
-      if (File.Exists(target)) continue;
+      if (File.Exists(target) || viewpointSetup && name.StartsWith("viewpoint-")) continue;
       var text = Read(name);
       if (name == "viewpoint-live.properties") text += "onboarding.edition=1\nonboarding.finished=true\n";
       if (name == "options.ini") text += $"language={gameLanguage}\n";

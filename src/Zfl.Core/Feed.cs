@@ -38,7 +38,7 @@ public sealed class LauncherState {
   /// Oyun -debug ile açılsın (geliştirici menüleri).
   public bool DebugMode { get; set; }
   /// PZ_Optimization oyun klasörüne kurulsun (FPS artışı; oyun güncellenince launcher yeniden kurar).
-  public bool PzOptimization { get; set; } = true;
+  public bool PzOptimization { get; set; }
   /// Kullanıcının mod sırası (mod id'leri; henüz inmemiş Workshop öğeleri için "ws:<numara>").
   public List<string> ModOrder { get; set; } = [];
   static readonly JsonSerializerOptions O = new() { WriteIndented = true };
@@ -56,7 +56,8 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
   public IProgress<double?>? Percent { get; init; }
   public async Task<IReadOnlyList<ModInfo>> InstallModsAsync(IEnumerable<long> ids, CancellationToken ct) {
     var list = ids.ToList();
-    var items = await DownloadAllAsync(list, ct);
+    var items = await DownloadAllAsync(list.Where(id => l.LocalItem(id) is null).ToList(), ct);
+    foreach (var id in list) if (l.LocalItem(id) is { } local) items[id] = local;
     var result = new List<ModInfo>();
     foreach (var id in list) {
       var item = items[id];

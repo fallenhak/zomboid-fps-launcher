@@ -105,6 +105,21 @@ public class GameDefaultsTests {
     Assert.True(ViewpointSetup.Finished(l));
     Assert.Null(ViewpointSetup.Get(ViewpointSetup.SettingsFile(l), "packs.ViewpointTileFix"));
   }
+  [Fact] public void SetupWantedLeavesViewpointFilesToViewpoint() {
+    var l = new InstallLayout(Directory.CreateTempSubdirectory("zfl").FullName);
+    var written = GameDefaults.ApplyIfMissing(l, "EN", null, viewpointSetup: true);
+    Assert.Contains("options.ini", written);
+    Assert.False(File.Exists(ViewpointSetup.SettingsFile(l)));
+    ViewpointSetup.ApplyFixes(l);
+    Assert.Equal("512", ViewpointSetup.Get(ViewpointSetup.SettingsFile(l), "memory.lookMiB"));
+    Assert.False(ViewpointSetup.Finished(l));
+  }
+  [Fact] public void LocalItemNeedsModsFolder() {
+    var l = new InstallLayout(Directory.CreateTempSubdirectory("zfl").FullName);
+    Assert.Null(l.LocalItem(1));
+    Directory.CreateDirectory(Path.Combine(l.LocalModsDir, "1", "mods", "X"));
+    Assert.Equal(Path.Combine(l.LocalModsDir, "1"), l.LocalItem(1));
+  }
   [Fact] public void OptionsHaveNoMachineSpecificLines() {
     var t = GameDefaults.Read("options.ini");
     foreach (var k in new[] { "width=", "height=", "fullScreen=", "voiceRecordDeviceName=", "language=" })

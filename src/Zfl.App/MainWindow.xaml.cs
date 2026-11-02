@@ -587,9 +587,10 @@ public partial class MainWindow : Window
         // listedeki bütün açık Java modları: oyuncu listeye kendisi eklediğinde zaten launcher'da uyarı görmüştü
         ZbApprovals.ApproveMods(l, OrderedMods(l).Where(m => m.IsJava));
         // yeni kurulum hazır ayarlarla gelir; oyuncunun mevcut ayar dosyalarına dokunulmaz
-        foreach (var f in GameDefaults.ApplyIfMissing(l, Loc.Lang == "tr" ? "TR" : "EN", SystemInfo.ScreenSize())) Log.Write($"default settings written: {f}");
+        foreach (var f in GameDefaults.ApplyIfMissing(l, Loc.Lang == "tr" ? "TR" : "EN", SystemInfo.ScreenSize(), state.ViewpointSetupWanted)) Log.Write($"default settings written: {f}");
         // Viewpoint 12 GB altı kartlarda doku sıkıştırma istiyor; kurulum ekranı istense de baştan açık olsun
         if (ViewpointSetup.NeedsCompression(SystemInfo.VramMiB())) ViewpointSetup.EnableCompression(l);
+        ViewpointSetup.ApplyFixes(l);
         if (state.ViewpointSetupWanted)
         {
             if (ViewpointSetup.Finished(l)) state.ViewpointSetupWanted = false;
@@ -684,7 +685,7 @@ public partial class MainWindow : Window
     static IEnumerable<string> FolderNames(InstallLayout l, long id)
     {
         var steam = new SteamCmd(l.ToolsDir, new ProcessRunner(), new HttpClient());
-        return new[] { steam.ItemDir(id) }.Concat(SteamWorkshopDirs.Value.Select(d => Path.Combine(d, id.ToString())))
+        return new[] { l.LocalItem(id), steam.ItemDir(id) }.OfType<string>().Concat(SteamWorkshopDirs.Value.Select(d => Path.Combine(d, id.ToString())))
             .Select(ModInfo.FindInWorkshopItem).FirstOrDefault(m => m.Count > 0, [])
             .Select(m => Path.GetFileName(m.Dir));
     }

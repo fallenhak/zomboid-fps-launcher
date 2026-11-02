@@ -6,6 +6,9 @@ public sealed record InstallLayout(string Root) {
   public string ModsDir => Path.Combine(ZomboidDir, "mods");
   public string ZbConfigDir => Path.Combine(Root, "zombie_buddy");
   public string ToolsDir => Path.Combine(Root, "araclar");
+  /// Atölye yerine kullanılacak elle konmuş mod kopyaları: yerel-modlar/<Atölye numarası>/mods/<mod> (ör. Viewpoint nightly).
+  public string LocalModsDir => Path.Combine(Root, "yerel-modlar");
+  public string? LocalItem(long id) { var d = Path.Combine(LocalModsDir, id.ToString()); return Directory.Exists(Path.Combine(d, "mods")) ? d : null; }
   public string StateFile => Path.Combine(Root, "launcher", "state.json");
   public static string? Validate(string root) {
     if (!Path.IsPathFullyQualified(root)) return Loc.T("path.full");
