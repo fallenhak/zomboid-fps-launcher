@@ -709,7 +709,9 @@ public partial class MainWindow : Window
     {
         var exe = Path.Combine(l.GameDir, "ProjectZomboid64.exe");
         var started = DateTime.Now;
-        var args = state.DebugMode ? "-debug" : "";
+        // oyunun sırası workshop,steam,mods: aynı mod Steam aboneliğinde de varsa oradaki yüklenirdi (ör. eski Viewpoint).
+        // launcher'ın kopyası önce gelsin; Steam abonelikleri yine görünür (sunucular için).
+        var args = "-modfolders mods,workshop,steam" + (state.DebugMode ? " -debug" : "");
         using var p = Process.Start(new ProcessStartInfo(exe) { WorkingDirectory = l.GameDir, UseShellExecute = false, Arguments = args })!;
         Status(Loc.T("s.started"));
         Log.Write($"game started: {exe} {args}");
