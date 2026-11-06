@@ -3,8 +3,11 @@ namespace Zfl.Core;
 /// Locked: herkeste açık kalır, kapatılamaz (ZombieBuddy, Viewpoint).
 public sealed record FeedMod(long WorkshopId, string Name, bool Locked = false);
 /// ModOrder / DisabledModIds: herkesin başlangıç mod sırası ve kapalı modları (kendi sırasını kaydedene kadar).
+/// ListMods: Burak'ın mod listesi (temel modlar hariç); FeedSync değişiklikleri herkesin listesine taşır.
+/// Pack: ilk kurulumda indirilen hazır mod paketi (Drive).
 public sealed record Feed(string GameVersion, IReadOnlyList<FeedMod> BaseMods, string LauncherVersion, string? LauncherUrl,
-    IReadOnlyList<string>? ModOrder = null, IReadOnlyList<string>? DisabledModIds = null) {
+    IReadOnlyList<string>? ModOrder = null, IReadOnlyList<string>? DisabledModIds = null,
+    IReadOnlyList<long>? ListMods = null, FeedPack? Pack = null) {
   static readonly JsonSerializerOptions O = new() { PropertyNameCaseInsensitive = true };
   public static Feed Parse(string json) => JsonSerializer.Deserialize<Feed>(json, O) ?? throw new InvalidDataException("feed boş");
   public const string Url = "https://raw.githubusercontent.com/fallenhak/zomboid-fps-launcher/main/feed.json";
@@ -41,6 +44,13 @@ public sealed class LauncherState {
   public bool PzOptimization { get; set; }
   /// Kullanıcının mod sırası (mod id'leri; henüz inmemiş Workshop öğeleri için "ws:<numara>").
   public List<string> ModOrder { get; set; } = [];
+  /// Atölye öğesinin mod klasörleri; SteamCMD kopyası olmadan (paketten kurulunca) hangi klasörün hangi öğeye ait olduğu.
+  public Dictionary<long, List<string>> ModFolders { get; set; } = [];
+  /// Feed'deki liste ve kapalı modların en son görülen hâli; yalnız sonradan değişenler uygulanır.
+  public List<long> FeedListSeen { get; set; } = [];
+  public List<string> FeedDisabledSeen { get; set; } = [];
+  /// Açılmış mod paketinin kimliği.
+  public string? PackApplied { get; set; }
   static readonly JsonSerializerOptions O = new() { WriteIndented = true };
   public static string DefaultPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ZomboidFpsLauncher", "state.json");
   public static LauncherState Load(string path) {
@@ -78,6 +88,22 @@ public sealed class Installer(InstallLayout l, SteamCmd steam, IProgress<string>
       }).ToList(), ct));
     }
     return result;
+  }
+  /// Elle konmuş kopya (ör. Viewpoint nightly) Atölye'de güncelleme gelince: Atölye sürümü indirilir ve
+  /// yerel sürüme yetişmişse (0.1.7 ≥ 0.1.7-rc2) yerel kopya kenara alınır, sonra Atölye'den kurulur.
+  /// Yetişmemişse yerel kopya kalır. Dönen: yerel kopya kaldırıldı mı.
+  public async Task<bool> RetireLocalIfCaughtUpAsync(long id, CancellationToken ct) {
+    if (l.LocalItem(id) is not { } local) return false;
+    p.Report(Loc.F("pr.checkLocal", Name(id)));
+    var (done, _) = await steam.DownloadManyAsync([id], ct);
+    if (!done.Contains(id)) return false;
+    static string? Ver(string dir) => ModInfo.FindInWorkshopItem(dir).Select(m => m.ModVersion).FirstOrDefault(v => v is not null);
+    var lv = Ver(local); var wv = Ver(steam.ItemDir(id));
+    if (!ModVersion.AtLeast(wv, lv)) return false;
+    var aside = Path.Combine(l.LocalModsDir, $"{id}.eski-{lv}");
+    if (Directory.Exists(aside)) Directory.Delete(aside, true);
+    Directory.Move(local, aside);
+    return true;
   }
   public static string Unfinished(InstallLayout l, string folder) => Path.Combine(l.ModsDir, folder + ".kuruluyor");
   /// Hepsi tek SteamCMD oturumunda iner; bu arada indirme klasörünün dolmasına bakıp yüzde gösterilir.

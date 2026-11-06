@@ -74,8 +74,8 @@ public partial class MainWindow : Window
             feedOnline = true;
         }
         catch { feed = Feed.Builtin; feedOnline = false; }
-        // ilk açılışta hazır listedeki kapalı modlar kapalı gelir
-        if (fresh && feed.DisabledModIds is { } off) state.DisabledModIds = [.. off];
+        // Burak'ın listesindeki değişiklikler (eklenen/çıkan/kapatılan modlar) herkese gelir; oyuncunun kendi seçimleri kalır
+        if (FeedSync.Apply(state, feed)) { Log.Write("mod list updated from feed"); if (!fresh) state.Save(StatePath); }
 
         MemorySlider.Value = state.MemoryMb / 1024.0;
         MemoryHint.Text = Loc.F("set.memHint", TotalRam / (1L << 30));
@@ -370,7 +370,8 @@ public partial class MainWindow : Window
         SetupError.Text = err ?? (steamGame is null ? Loc.T("setup.cantNoGame") : "");
         InstallButton.IsEnabled = err is null && steamGame is not null && !busy;
         if (err is not null || steamGame is null) { SpaceText.Text = ""; return; }
-        var need = DirSize(steamGame) + (1L << 30);
+        // mod paketi: zip ve açılmış hâli aynı anda diskte durur
+        var need = DirSize(steamGame) + (1L << 30) + (feed?.Pack?.SizeBytes ?? 0) * 2;
         var drive = new DriveInfo(Path.GetPathRoot(Path.GetFullPath(root))!);
         var free = drive.IsReady ? drive.AvailableFreeSpace : 0;
         SpaceText.Text = Loc.F("setup.space", Gb(need), Gb(free));
@@ -517,6 +518,7 @@ public partial class MainWindow : Window
 
             var installer = NewInstaller(l, steam, progress);
             var ids = feed.BaseMods.Select(m => m.WorkshopId).Concat(state.UserMods).Distinct().ToList();
+            await InstallPackAsync(l);
             try
             {
                 // zamanlar indirmeden önce alınır: indirme sırasında gelen güncelleme bir dahaki denetimde yakalanır
@@ -527,8 +529,12 @@ public partial class MainWindow : Window
                 var changed = times.Count == 0 ? ids : ids.Where(id =>
                     times.FirstOrDefault(t => t.Id == id) is not { } t || t.UpdatedUnix > state.ModUpdated.GetValueOrDefault(id)
                     || !FolderNames(l, id).Any(f => Installed(l, f))).ToList();
+                // elle konmuş kopyalar (Viewpoint nightly) Atölye sürümü onlara yetişene kadar kalır
+                foreach (var id in changed.Where(id => l.LocalItem(id) is not null).ToList())
+                    if (await installer.RetireLocalIfCaughtUpAsync(id, default)) Status(Loc.F("s.localRetired", ModName(id)));
                 Log.Write($"downloading {changed.Count} of {ids.Count} mods: {string.Join(", ", changed.Select(ModName))}");
                 var installed = await installer.InstallModsAsync(changed, default);
+                foreach (var id in changed) if (FolderNames(l, id).ToList() is [_, ..] f) state.ModFolders[id] = f;
                 // ilk kez kurulan çok modlu öğelerde birbiriyle çalışmayan kardeşlerden yalnız ilki açık gelsin
                 foreach (var id in changed.Where(id => !state.ModUpdated.ContainsKey(id)))
                     foreach (var off in Zfl.Core.ModList.SiblingsToDisable(FolderNames(l, id).Select(f => ModInfo.Read(Path.Combine(l.ModsDir, f))).OfType<ModInfo>().ToList()))
@@ -576,6 +582,33 @@ public partial class MainWindow : Window
             SetBusy(false);
             ShowProgress(null);
             RefreshAll();
+        }
+    }
+
+    /// İlk kurulumda modları Drive'daki hazır paketten açar. Olmazsa sorun değil: modlar Atölye'den iner.
+    async Task InstallPackAsync(InstallLayout l)
+    {
+        if (feed.Pack is not { } pack || state.PackApplied == pack.Id || ModPack.HasMods(l)) return;
+        var zip = Path.Combine(l.Root, "indirme", "mod-paketi.zip");
+        try
+        {
+            Log.Write($"mod pack {pack.Id}: downloading {pack.SizeBytes / 1048576} MB");
+            ShowProgress(Loc.F("pr.packDownload", pack.SizeBytes / 1048576));
+            using (var dl = new HttpClient { Timeout = Timeout.InfiniteTimeSpan })
+                await ModPack.DownloadAsync(dl, pack.Url, zip, pack.SizeBytes, new Progress<double?>(ShowPercent), default);
+            ShowProgress(Loc.T("pr.packExtract"));
+            var pct = new Progress<double?>(ShowPercent);
+            var manifest = await Task.Run(() => ModPack.Extract(zip, l, pct));
+            ModPack.Apply(manifest, state);
+            state.PackApplied = pack.Id;
+            state.Save(StatePath);
+            File.Delete(zip);
+            Log.Write($"mod pack {pack.Id}: {manifest.Items.Count} items unpacked");
+        }
+        catch (Exception ex)
+        {
+            Log.Error("mod pack", ex);
+            Status(Loc.F("s.packFail", ex.Message));
         }
     }
 
@@ -669,7 +702,7 @@ public partial class MainWindow : Window
         Directory.Exists(Path.Combine(l.ModsDir, folder)) && !File.Exists(Installer.Unfinished(l, folder));
 
     /// Listedeki modların klasörleri. Biri bile çözülemezse hepsi tutulur (yanlışlıkla silmemek için).
-    static List<string> KeepFolders(InstallLayout l, IEnumerable<long> ids)
+    List<string> KeepFolders(InstallLayout l, IEnumerable<long> ids)
     {
         var per = ids.Select(id => FolderNames(l, id).ToList()).ToList();
         if (per.Any(f => f.Count == 0) && Directory.Exists(l.ModsDir))
@@ -679,13 +712,18 @@ public partial class MainWindow : Window
 
     static readonly Lazy<IReadOnlyList<string>> SteamWorkshopDirs = new(SteamLocator.WorkshopDirs);
 
-    /// Bir Workshop öğesinin içerdiği mod klasör adları (SteamCMD indirmesinden, yoksa Steam'in Atölye klasöründen).
-    static IEnumerable<string> FolderNames(InstallLayout l, long id)
+    /// Bir Workshop öğesinin içerdiği mod klasör adları: elle konmuş kopyadan, SteamCMD indirmesinden,
+    /// paketten kurulduysa kayıttan, en son Steam'in kendi Atölye klasöründen.
+    IEnumerable<string> FolderNames(InstallLayout l, long id)
     {
         var steam = new SteamCmd(l.ToolsDir, new ProcessRunner(), new HttpClient());
-        return new[] { l.LocalItem(id), steam.ItemDir(id) }.OfType<string>().Concat(SteamWorkshopDirs.Value.Select(d => Path.Combine(d, id.ToString())))
-            .Select(ModInfo.FindInWorkshopItem).FirstOrDefault(m => m.Count > 0, [])
-            .Select(m => Path.GetFileName(m.Dir));
+        static List<string> Of(string dir) => ModInfo.FindInWorkshopItem(dir).Select(m => Path.GetFileName(m.Dir)).ToList();
+        foreach (var d in new[] { l.LocalItem(id), steam.ItemDir(id) }.OfType<string>())
+            if (Of(d) is [_, ..] f) return f;
+        if (state.ModFolders.TryGetValue(id, out var known) && known.Count > 0) return known;
+        foreach (var d in SteamWorkshopDirs.Value.Select(d => Path.Combine(d, id.ToString())))
+            if (Of(d) is [_, ..] f) return f;
+        return [];
     }
 
     /// Oyuna yazılacak sıra: açık ve inmiş modlar, launcher'daki sırayla.
