@@ -7,6 +7,13 @@ public class LoadOrderTests {
     new(id, id, "", req ?? [], null, null, false) { LoadAfter = after ?? [], LoadBefore = before ?? [], Incompatible = inc ?? [] };
   static string[] Ids(IEnumerable<ModInfo> ms) => ms.Select(m => m.Id).ToArray();
 
+  // gereği kurulu olmayan alt modlar (ör. Gunsmith'in Post-Soviet Armory eki) oyuna yazılmaz; ona bağlı olanlar da
+  [Fact] public void DropsModsWithUnmetRequirements() {
+    var (kept, dropped) = ModList.DropUnmet([M("ZB"), M("Gun"), M("GunPSA", ["Gun", "PSA"]), M("Deep", ["GunPSA"]), M("VP", ["ZB"])]);
+    Assert.Equal(["ZB", "Gun", "VP"], Ids(kept));
+    Assert.Equal(["GunPSA", "Deep"], dropped.Select(d => d.Mod.Id).ToArray());
+    Assert.Equal(["PSA"], dropped[0].Missing);
+  }
   [Fact] public void KeepsGivenOrderWhenRulesAllow() =>
     Assert.Equal(["ZB", "VP", "A", "B"], Ids(LoadOrder.Sort([M("ZB"), M("VP", ["ZB"]), M("A", ["VP"]), M("B", ["VP"])])));
   [Fact] public void MovesModBelowItsRequirement() =>

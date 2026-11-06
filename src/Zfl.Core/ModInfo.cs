@@ -65,6 +65,16 @@ public static class ModList {
   /// Oyunun kendi yazdığı biçim: ters bölü yok, ZombieBuddy de listede; aksi halde oyun "0 mods" yükler.
   public static string DefaultTxt(IEnumerable<string> modIds) =>
     "VERSION = 1,\n\nmods\n{\n" + string.Concat(modIds.Select(id => $"    mod = {id},\n")) + "}\n\nmaps\n{\n}\n";
+  /// Gereği listede olmayan modları (ve zincirle onlara bağlı olanları) ayırır: oyun onları zaten yükleyemez.
+  public static (IReadOnlyList<ModInfo> Kept, IReadOnlyList<(ModInfo Mod, IReadOnlyList<string> Missing)> Dropped) DropUnmet(IEnumerable<ModInfo> mods) {
+    var kept = mods.ToList(); var dropped = new List<(ModInfo, IReadOnlyList<string>)>();
+    while (true) {
+      var have = kept.Select(m => m.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+      var bad = kept.Select(m => (m, miss: (IReadOnlyList<string>)m.Requires.Where(r => !have.Contains(r)).ToList())).Where(x => x.miss.Count > 0).ToList();
+      if (bad.Count == 0) return (kept, dropped);
+      foreach (var (m, miss) in bad) { kept.Remove(m); dropped.Add((m, miss)); }
+    }
+  }
   public static IReadOnlyList<string> Missing(IEnumerable<ModInfo> mods) {
     var list = mods.ToList(); var have = list.Select(m => m.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
     return list.SelectMany(m => m.Requires).Where(r => !have.Contains(r)).Distinct().ToList();

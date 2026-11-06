@@ -472,8 +472,7 @@ public partial class MainWindow : Window
             installer.WriteModList(ordered);
             installer.SyncZombieBuddy();
             PrepareGameSettings(l);
-            var missing = Zfl.Core.ModList.Missing(ordered);
-            if (missing.Count > 0) Status(Loc.F("s.missingReq", string.Join(", ", missing)));
+            ReportUnmet(l);
             state.Save(StatePath);
             return true;
         }
@@ -548,7 +547,6 @@ public partial class MainWindow : Window
             ShowProgress(Loc.T("pr.config"));
             installer.WriteConfig(state.MemoryMb, UseSteam);
             var ordered = OrderedMods(l);
-            var missing = Zfl.Core.ModList.Missing(ordered);
             installer.WriteModList(ordered);
             installer.SyncZombieBuddy();
             PrepareGameSettings(l);
@@ -560,7 +558,7 @@ public partial class MainWindow : Window
             }
             catch (Exception ex) { Log.Error("viewpoint natives", ex); }
             await EnsurePzOptAsync(l, gameChanged);
-            if (missing.Count > 0) Status(Loc.F("s.missingReq", string.Join(", ", missing)));
+            ReportUnmet(l);
 
             if (steamGame is not null) state.LastBuildId = GameInfo.BuildId(steamGame);
             state.Save(StatePath);
@@ -691,8 +689,17 @@ public partial class MainWindow : Window
     }
 
     /// Oyuna yazılacak sıra: açık ve inmiş modlar, launcher'daki sırayla.
+    /// Açık modlar, oyunun yükleyeceği sırada. Gereği kurulu olmayanlar (ör. bir paketin yeni gelen eki) yazılmaz.
     IReadOnlyList<ModInfo> OrderedMods(InstallLayout l) =>
-        LoadOrder.Sort(OrderedRows(l).Where(r => r.Enabled && r.Info is not null).Select(r => r.Info!).ToList());
+        LoadOrder.Sort(Zfl.Core.ModList.DropUnmet(EnabledMods(l)).Kept.ToList());
+    List<ModInfo> EnabledMods(InstallLayout l) => OrderedRows(l).Where(r => r.Enabled && r.Info is not null).Select(r => r.Info!).ToList();
+    /// Gereği eksik diye oyuna yazılmayan modları durum satırında ve kayıtta söyler.
+    void ReportUnmet(InstallLayout l)
+    {
+        var dropped = Zfl.Core.ModList.DropUnmet(EnabledMods(l)).Dropped;
+        foreach (var (m, miss) in dropped) Log.Write($"not loaded: {m.Id} needs {string.Join(", ", miss)}");
+        if (dropped.Count > 0) Status(Loc.F("s.missingReq", string.Join(", ", dropped.Select(d => $"{d.Mod.Name} ({string.Join(", ", d.Missing)})"))));
+    }
 
     /// Mod listesini oyuna yazar; birlikte çalışmayan modları söyler.
     void SaveModList()
@@ -764,7 +771,7 @@ public partial class MainWindow : Window
             var game = GameInfo.Version(l.ZomboidDir) ?? feed.GameVersion;
             if (installed.Any(m => !ModInfo.SupportsGame(m, game))) notes.Add(Loc.F("mods.wrongVer", game));
             if (installed.Any(m => m.IsJava)) notes.Add(Loc.T("mods.java"));
-            var missing = Zfl.Core.ModList.Missing(OrderedMods(l));
+            var missing = Zfl.Core.ModList.Missing(EnabledMods(l));
             if (missing.Count > 0) notes.Add(Loc.F("mods.needs", string.Join(", ", missing)));
             SaveModList();
             ModMessage.Text = string.Join(" ", notes);

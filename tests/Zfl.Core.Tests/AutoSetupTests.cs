@@ -104,6 +104,8 @@ public class GameDefaultsTests {
     Assert.Equal("mine=1\n", File.ReadAllText(ViewpointSetup.OptionsFile(l)));
     Assert.True(ViewpointSetup.Finished(l));
     Assert.Null(ViewpointSetup.Get(ViewpointSetup.SettingsFile(l), "packs.ViewpointTileFix"));
+    // hazır dosyadaki kurulum satırları tekrar eklenmez (eski sürüm numarası yenisini ezip kurulum ekranını açmasın)
+    Assert.Single(File.ReadAllLines(ViewpointSetup.SettingsFile(l)), x => x.StartsWith("onboarding.edition="));
   }
   [Fact] public void SetupWantedLeavesViewpointFilesToViewpoint() {
     var l = new InstallLayout(Directory.CreateTempSubdirectory("zfl").FullName);

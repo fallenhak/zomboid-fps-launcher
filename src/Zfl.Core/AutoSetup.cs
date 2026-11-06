@@ -112,7 +112,8 @@ public static class GameDefaults {
       var target = Path.Combine(l.ZomboidDir, TargetPath(name));
       if (File.Exists(target) || viewpointSetup && name.StartsWith("viewpoint-")) continue;
       var text = Read(name);
-      if (name == "viewpoint-live.properties") text += "onboarding.edition=1\nonboarding.finished=true\n";
+      // Viewpoint kurulum ekranı çıkmasın; hazır dosyada zaten yazılıysa (Viewpoint'in kendi sürüm numarasıyla) dokunulmaz
+      if (name == "viewpoint-live.properties" && !text.Contains("onboarding.finished=")) text += "onboarding.edition=1\nonboarding.finished=true\n";
       if (name == "options.ini") text += $"language={gameLanguage}\n";
       if (name == "options.ini" && screen is var (w, h)) text += $"fullScreen=false\nborderless=true\nwidth={w}\nheight={h}\n";
       Directory.CreateDirectory(Path.GetDirectoryName(target)!);

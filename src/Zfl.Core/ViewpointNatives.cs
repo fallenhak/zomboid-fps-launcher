@@ -3,7 +3,8 @@ using System.Security.Cryptography;
 namespace Zfl.Core;
 
 /// Viewpoint'in DLSS / FSR 3 dosyaları: oyun menüsünde "indir" demek yerine launcher önceden koyar.
-/// Adresler ve imzalar Viewpoint 0.1.6.1'in kendi listesinden (viewpoint.upscale.NativeFiles); imzası tutmayan dosyayı Viewpoint kullanmaz.
+/// Steam Audio (ses ayarı "Steam Audio (HRTF)") da aynı yoldan: Viewpoint onu da oyunda Valve'dan indirtiyordu.
+/// Adresler ve imzalar Viewpoint 0.1.7-rc2'nin kendi listesinden (viewpoint.platform.NativeFiles); imzası tutmayan dosyayı Viewpoint kullanmaz.
 public static class ViewpointNatives {
   public sealed record Lib(string Name, string Sha256, string Url, bool InZip = false);
 
@@ -20,6 +21,12 @@ public static class ViewpointNatives {
       "https://raw.githubusercontent.com/NVIDIA/DLSS/v310.9.1/lib/Windows_x86_64/rel/nvngx_dlss.dll"),
   ];
 
+  const string SteamAudioZip = "https://github.com/ValveSoftware/steam-audio/releases/download/v4.8.1/steamaudio_fmod_4.8.1.zip";
+  public static readonly Lib[] SteamAudio = [
+    new("phonon.dll", "957e8667d9d5b0e532334ec744c8897c9c09c4ec895d51a4a3faa3c8b033a2af", SteamAudioZip, true),
+    new("phonon_fmod.dll", "b59a67a467e71a065e5a02892ccffbe82de678bc712eab5fd9930cb60bf7cbed", SteamAudioZip, true),
+  ];
+
   public static string Folder(InstallLayout l) => Path.Combine(l.ZomboidDir, "viewpoint-natives");
   static string Hash(byte[] b) => Convert.ToHexStringLower(SHA256.HashData(b));
   static bool Ready(string dir, Lib x) {
@@ -27,10 +34,10 @@ public static class ViewpointNatives {
     return File.Exists(f) && Hash(File.ReadAllBytes(f)) == x.Sha256;
   }
 
-  /// Eksik ya da bozuk olanları indirir; NVIDIA kartı yoksa DLSS atlanır. Yazdıklarının adını döner.
+  /// Eksik ya da bozuk olanları indirir; NVIDIA kartı yoksa DLSS atlanır, Steam Audio her zaman. Yazdıklarının adını döner.
   public static async Task<IReadOnlyList<string>> EnsureAsync(InstallLayout l, HttpClient http, bool nvidia, CancellationToken ct) {
     var dir = Folder(l); Directory.CreateDirectory(dir);
-    var want = (nvidia ? Fsr.Concat(Dlss) : Fsr).Where(x => !Ready(dir, x)).ToList();
+    var want = (nvidia ? Fsr.Concat(Dlss) : Fsr).Concat(SteamAudio).Where(x => !Ready(dir, x)).ToList();
     var written = new List<string>();
     foreach (var x in want.Where(x => !x.InZip)) {
       var b = await http.GetByteArrayAsync(x.Url, ct);
@@ -38,11 +45,10 @@ public static class ViewpointNatives {
       await File.WriteAllBytesAsync(Path.Combine(dir, x.Name), b, ct);
       written.Add(x.Name);
     }
-    var zipped = want.Where(x => x.InZip).ToList();
-    if (zipped.Count > 0) {
-      using var zip = new ZipArchive(new MemoryStream(await http.GetByteArrayAsync(Streamline, ct)));
-      foreach (var x in zipped) {
-        // aynı ad zip'te birkaç kez var (geliştirici sürümleri); imzası tutanı alınır
+    foreach (var group in want.Where(x => x.InZip).GroupBy(x => x.Url)) {
+      using var zip = new ZipArchive(new MemoryStream(await http.GetByteArrayAsync(group.Key, ct)));
+      foreach (var x in group) {
+        // aynı ad zip'te birkaç kez var (geliştirici sürümleri, başka işletim sistemleri); imzası tutanı alınır
         foreach (var e in zip.Entries.Where(e => e.Name.Equals(x.Name, StringComparison.OrdinalIgnoreCase))) {
           using var ms = new MemoryStream(); using (var s = e.Open()) await s.CopyToAsync(ms, ct);
           if (Hash(ms.ToArray()) != x.Sha256) continue;
