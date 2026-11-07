@@ -39,7 +39,12 @@ def liste():
     state, feed = load(STATE), load(FEED)
     base = {m["workshopId"] for m in feed["baseMods"]}
     off_items = set(ci(state, "DisabledMods") or [])
-    mods = [i for i in ci(state, "UserMods") if i not in base and i not in off_items]
+    # Atölye'de olmayan, yalnız Burak'ın bilgisayarındaki modlar (ör. KnoxMap haritası) dağıtılmaz
+    on_workshop = {int(k) for k in (ci(state, "ModUpdated") or {})}
+    local_only = [i for i in ci(state, "UserMods") if i not in on_workshop]
+    mods = [i for i in ci(state, "UserMods") if i not in base and i not in off_items and i in on_workshop]
+    if local_only:
+        print(f"yalnız bu bilgisayardaki {len(local_only)} mod listeye alınmadı: {local_only}")
     feed["listMods"] = mods
     feed["modOrder"] = ci(state, "ModOrder")
     feed["disabledModIds"] = ci(state, "DisabledModIds")

@@ -530,7 +530,8 @@ public partial class MainWindow : Window
                     times.FirstOrDefault(t => t.Id == id) is not { } t || t.UpdatedUnix > state.ModUpdated.GetValueOrDefault(id)
                     || !FolderNames(l, id).Any(f => Installed(l, f))).ToList();
                 // elle konmuş kopyalar (Viewpoint nightly) Atölye sürümü onlara yetişene kadar kalır
-                foreach (var id in changed.Where(id => l.LocalItem(id) is not null).ToList())
+                // Atölye'de olmayan yerel modlar (ör. KnoxMap haritası) hep yerel kalır
+                foreach (var id in changed.Where(id => l.LocalItem(id) is not null && times.Any(t => t.Id == id)).ToList())
                     if (await installer.RetireLocalIfCaughtUpAsync(id, default)) Status(Loc.F("s.localRetired", ModName(id)));
                 Log.Write($"downloading {changed.Count} of {ids.Count} mods: {string.Join(", ", changed.Select(ModName))}");
                 var installed = await installer.InstallModsAsync(changed, default);
